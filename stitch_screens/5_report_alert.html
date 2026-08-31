@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Report Travel Alert</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: IBM Plex Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-fixed": "#dee3ea",
+                        "surface-tint": "#35628a",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#a0caf8",
+                        "outline": "#72777f",
+                        "background": "#f9f9f8",
+                        "secondary-container": "#dee3ea",
+                        "primary-fixed": "#cfe5ff",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#2d5a82",
+                        "on-tertiary-fixed": "#281800",
+                        "secondary-fixed-dim": "#c2c7ce",
+                        "surface-container-high": "#e8e8e7",
+                        "on-secondary-fixed-variant": "#42474d",
+                        "status-green": "#4D845D",
+                        "border-subtle": "#E5E7EB",
+                        "surface-container-low": "#f3f4f3",
+                        "primary": "#0e4269",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#e2e2e2",
+                        "surface-dim": "#dadad9",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#a0caf8",
+                        "tertiary": "#583a00",
+                        "surface-slate": "#1E2328",
+                        "on-surface": "#1a1c1c",
+                        "on-surface-variant": "#42474e",
+                        "on-tertiary-fixed-variant": "#614000",
+                        "inverse-on-surface": "#f1f1f0",
+                        "on-secondary-container": "#60656b",
+                        "surface-container": "#eeeeed",
+                        "tertiary-container": "#74500d",
+                        "on-primary-container": "#a6d1ff",
+                        "status-red": "#B14A4A",
+                        "inverse-surface": "#2f3130",
+                        "on-background": "#1a1c1c",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f9f9f8",
+                        "on-secondary-fixed": "#171c21",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#f0be73",
+                        "surface": "#f9f9f8",
+                        "secondary": "#5a5f65",
+                        "tertiary-fixed": "#ffddaf",
+                        "status-amber": "#C48B3D",
+                        "outline-variant": "#c2c7cf",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-container": "#f7c578",
+                        "on-primary-fixed-variant": "#194a71",
+                        "on-primary-fixed": "#001d34"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "panel-width": "360px",
+                        "unit": "8px",
+                        "gutter": "12px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "24px"
+                    },
+                    fontFamily: {
+                        "body-md": ["IBM Plex Sans"],
+                        "label-caps": ["IBM Plex Sans"],
+                        "display-kpi": ["IBM Plex Sans"],
+                        "headline-sm": ["IBM Plex Sans"],
+                        "display-kpi-mobile": ["IBM Plex Sans"],
+                        "label-sm": ["IBM Plex Sans"]
+                    },
+                    fontSize: {
+                        "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "label-caps": ["12px", { lineHeight: "16px", letterSpacing: "0.08em", fontWeight: "600" }],
+                        "display-kpi": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "display-kpi-mobile": ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "700" }],
+                        "label-sm": ["11px", { lineHeight: "14px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom Checkbox styles for location toggle */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #0e4269;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #0e4269;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md text-body-md antialiased min-h-screen flex flex-col selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top Offline Banner -->
+<div class="bg-surface-container-highest py-2 px-margin-mobile flex items-center justify-center gap-2 border-b border-border-subtle w-full z-50">
+<span class="material-symbols-outlined text-outline-variant text-[16px]">wifi_off</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Offline - Will Sync When Connected</span>
+</div>
+<!-- Header (Transactional - No global nav) -->
+<header class="flex items-center justify-between px-margin-mobile py-4 sticky top-0 bg-surface/95 backdrop-blur-sm z-40">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-container-low active:bg-surface-container-high transition-colors text-primary flex items-center justify-center h-10 w-10">
+<span class="material-symbols-outlined">close</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-on-surface text-center flex-1">Report Alert</h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 px-margin-mobile pb-32 pt-2 space-y-8 overflow-y-auto hide-scrollbar">
+<!-- Incident Type Grid -->
+<section class="space-y-4">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest">Incident Type</h2>
+<div class="grid grid-cols-2 gap-3" id="incident-grid">
+<!-- Selectable Item Pattern -->
+<button class="incident-btn flex flex-col items-start p-4 rounded-xl border border-border-subtle bg-surface-container-lowest shadow-sm hover:border-primary-fixed-dim transition-all text-left active:scale-[0.98]" data-value="fog">
+<span class="material-symbols-outlined text-primary mb-3 text-3xl">foggy</span>
+<span class="font-headline-sm text-[16px] font-semibold text-on-surface leading-tight">Heavy Fog</span>
+</button>
+<button class="incident-btn flex flex-col items-start p-4 rounded-xl border border-border-subtle bg-surface-container-lowest shadow-sm hover:border-primary-fixed-dim transition-all text-left active:scale-[0.98]" data-value="landslide">
+<span class="material-symbols-outlined text-status-amber mb-3 text-3xl">landslide</span>
+<span class="font-headline-sm text-[16px] font-semibold text-on-surface leading-tight">Landslide</span>
+</button>
+<button class="incident-btn flex flex-col items-start p-4 rounded-xl border border-border-subtle bg-surface-container-lowest shadow-sm hover:border-primary-fixed-dim transition-all text-left active:scale-[0.98]" data-value="roadblock">
+<span class="material-symbols-outlined text-status-red mb-3 text-3xl">construction</span>
+<span class="font-headline-sm text-[16px] font-semibold text-on-surface leading-tight">Road Block</span>
+</button>
+<button class="incident-btn flex flex-col items-start p-4 rounded-xl border border-border-subtle bg-surface-container-lowest shadow-sm hover:border-primary-fixed-dim transition-all text-left active:scale-[0.98]" data-value="medical">
+<span class="material-symbols-outlined text-status-red mb-3 text-3xl">medical_services</span>
+<span class="font-headline-sm text-[16px] font-semibold text-on-surface leading-tight">Medical Emergency</span>
+</button>
+<button class="incident-btn flex flex-col items-start p-4 rounded-xl border border-border-subtle bg-surface-container-lowest shadow-sm hover:border-primary-fixed-dim transition-all text-left active:scale-[0.98]" data-value="vehicle">
+<span class="material-symbols-outlined text-status-amber mb-3 text-3xl">car_crash</span>
+<span class="font-headline-sm text-[16px] font-semibold text-on-surface leading-tight">Vehicle Issue</span>
+</button>
+<button class="incident-btn flex flex-col items-start p-4 rounded-xl border border-border-subtle bg-surface-container-lowest shadow-sm hover:border-primary-fixed-dim transition-all text-left active:scale-[0.98]" data-value="other">
+<span class="material-symbols-outlined text-outline mb-3 text-3xl">help</span>
+<span class="font-headline-sm text-[16px] font-semibold text-on-surface leading-tight">Other</span>
+</button>
+</div>
+</section>
+<!-- Severity Selector -->
+<section class="space-y-4">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest flex items-center justify-between">
+                Severity Level
+                <span class="material-symbols-outlined text-[14px]">info</span>
+</h2>
+<div class="flex gap-2" id="severity-selector">
+<button class="severity-btn flex-1 py-3 px-2 rounded-lg border border-border-subtle bg-surface-container-lowest shadow-sm transition-all flex flex-col items-center gap-1 active:scale-95" data-severity="low">
+<div class="w-3 h-3 rounded-full bg-status-green"></div>
+<span class="font-body-md text-sm font-semibold text-on-surface-variant">Low</span>
+</button>
+<button class="severity-btn flex-1 py-3 px-2 rounded-lg border border-border-subtle bg-surface-container-lowest shadow-sm transition-all flex flex-col items-center gap-1 active:scale-95" data-severity="medium">
+<div class="w-3 h-3 rounded-full bg-status-amber"></div>
+<span class="font-body-md text-sm font-semibold text-on-surface-variant">Medium</span>
+</button>
+<button class="severity-btn flex-1 py-3 px-2 rounded-lg border border-border-subtle bg-surface-container-lowest shadow-sm transition-all flex flex-col items-center gap-1 active:scale-95" data-severity="high">
+<div class="w-3 h-3 rounded-full bg-status-red"></div>
+<span class="font-body-md text-sm font-semibold text-on-surface-variant">High</span>
+</button>
+</div>
+</section>
+<!-- Attachments & Context -->
+<section class="space-y-4">
+<!-- Add Photo -->
+<button class="w-full flex items-center gap-4 p-4 rounded-xl border border-dashed border-outline-variant bg-surface-container-low hover:bg-surface-container transition-colors active:scale-[0.99]">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">add_a_photo</span>
+</div>
+<div class="flex flex-col items-start flex-1">
+<span class="font-headline-sm text-[16px] font-semibold text-on-surface">Add Photo Evidence</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Improves response accuracy</span>
+</div>
+</button>
+<!-- Share Location Toggle Card -->
+<div class="w-full flex items-center justify-between p-4 rounded-xl border border-border-subtle bg-surface-container-lowest shadow-sm relative overflow-hidden">
+<!-- Faint Map Background -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" data-alt="A highly detailed, ultra-minimalist topographic map pattern in light mode, featuring incredibly fine, subtle contour lines and precise geographic geometry. The aesthetic is clean, data-driven, and high-end, utilizing soft white and pale gray tones with perfectly crisp vector-like linework." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuADFc6jJMhiwHfNfYuIz0j0MDoHsSVzeBgNbUkzRNs5GWI3sE24R5l6RW_zwI32on7CpUzEI2HXup7TK0G3AjptBqLWCY76__r7ARRzO-biOHQE9qCgmuwh5zEh0xTiDoisu8HsOrbSTcs3qR_lmdnE_zk_psIeW8JUlSqIHjaoTjR2TF9P-e6nO2l5aTmfkwglubRQ6URFrB33nTqr3wGCojYOiePNb1BA1LewfBm4i1PBPcdnlMsX')"></div>
+<div class="flex items-center gap-4 relative z-10">
+<div class="w-10 h-10 rounded-full bg-primary-container/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-weight="fill">location_on</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-[16px] font-semibold text-on-surface">Share Location</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Attaches current GPS coordinates</span>
+</div>
+</div>
+<!-- Toggle Switch -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in z-10">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-surface-container-lowest border-4 appearance-none cursor-pointer border-outline-variant checked:border-primary transition-all duration-300" id="location-toggle" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container-highest cursor-pointer transition-colors duration-300" for="location-toggle"></label>
+</div>
+</div>
+<!-- Additional Context -->
+<div>
+<textarea class="w-full bg-surface-container-lowest border border-border-subtle rounded-xl p-4 font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-outline-variant shadow-sm resize-none" placeholder="Add additional details or context (optional)..." rows="3"></textarea>
+</div>
+</section>
+</main>
+<!-- Fixed Bottom Action Area -->
+<footer class="fixed bottom-0 left-0 right-0 p-margin-mobile bg-surface/90 backdrop-blur-md border-t border-border-subtle z-50">
+<button class="w-full bg-primary text-on-primary py-4 rounded-xl font-headline-sm text-headline-sm font-bold shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100" id="submit-btn">
+<span class="material-symbols-outlined" data-weight="fill">send</span>
+            Submit Alert
+        </button>
+<!-- Safe Area Spacer for modern phones -->
+<div class="h-4 w-full"></div>
+</footer>
+<script>
+        // Simple Interaction Logic for prototyping feel
+        document.addEventListener('DOMContentLoaded', () => {
+            const incidentBtns = document.querySelectorAll('.incident-btn');
+            const severityBtns = document.querySelectorAll('.severity-btn');
+
+            // Incident Selection Logic
+            incidentBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Deselect all
+                    incidentBtns.forEach(b => {
+                        b.classList.remove('border-primary', 'bg-primary-container/5', 'ring-1', 'ring-primary');
+                        b.classList.add('border-border-subtle', 'bg-surface-container-lowest');
+                    });
+                    // Select clicked
+                    btn.classList.remove('border-border-subtle', 'bg-surface-container-lowest');
+                    btn.classList.add('border-primary', 'bg-primary-container/5', 'ring-1', 'ring-primary');
+                });
+            });
+
+            // Severity Selection Logic
+            severityBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const severity = btn.getAttribute('data-severity');
+                    
+                    // Reset all
+                    severityBtns.forEach(b => {
+                        b.classList.remove('border-status-green', 'border-status-amber', 'border-status-red', 'bg-surface-container-low', 'ring-1');
+                        b.classList.add('border-border-subtle');
+                        b.querySelector('span').classList.remove('text-status-green', 'text-status-amber', 'text-status-red');
+                        b.querySelector('span').classList.add('text-on-surface-variant');
+                    });
+
+                    // Apply styles based on severity
+                    btn.classList.remove('border-border-subtle');
+                    btn.classList.add('bg-surface-container-low', 'ring-1');
+                    
+                    if (severity === 'low') {
+                        btn.classList.add('border-status-green', 'ring-status-green');
+                        btn.querySelector('span').classList.add('text-status-green');
+                    } else if (severity === 'medium') {
+                        btn.classList.add('border-status-amber', 'ring-status-amber');
+                        btn.querySelector('span').classList.add('text-status-amber');
+                    } else if (severity === 'high') {
+                        btn.classList.add('border-status-red', 'ring-status-red');
+                        btn.querySelector('span').classList.add('text-status-red');
+                    }
+                    
+                    btn.querySelector('span').classList.remove('text-on-surface-variant');
+                });
+            });
+        });
+    </script>
+</body></html>
