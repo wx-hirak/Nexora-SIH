@@ -21,7 +21,10 @@ export const FloatingAlertPanel: React.FC = () => {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600" />
           </span>
-          <span className="text-xs font-bold text-[#003356]">Priority Route Alerts</span>
+          <span className="text-xs font-bold text-[#003356]">
+            <span className="sm:hidden">Priority Alerts</span>
+            <span className="hidden sm:inline">Priority Route Alerts</span>
+          </span>
           <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
             {alerts.length} Active
           </span>

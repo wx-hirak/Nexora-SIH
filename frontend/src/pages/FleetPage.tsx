@@ -22,13 +22,18 @@ export const FleetPage: React.FC = () => {
                 Fleet & Telematics
               </span>
               <span className="text-[#72777f] text-xs">•</span>
-              <span className="text-xs text-[#72777f]">Sector 4 (Arunachal & Upper Assam)</span>
+              <span className="text-xs text-[#72777f]">
+                <span className="sm:hidden">Sector 4</span>
+                <span className="hidden sm:inline">Sector 4 (Arunachal & Upper Assam)</span>
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#003356] tracking-tight">
-              Fleet & Consignment Management
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#003356] tracking-tight">
+              <span className="sm:hidden">Fleet & Consignments</span>
+              <span className="hidden sm:inline">Fleet & Consignment Management</span>
             </h1>
             <p className="text-xs sm:text-sm text-[#42474e] max-w-3xl">
-              Unified telemetry, vehicle diagnostics, and consignment tracking across North Eastern transit corridors.
+              <span className="sm:hidden">Unified telematics and consignment tracking.</span>
+              <span className="hidden sm:inline">Unified telemetry, vehicle diagnostics, and consignment tracking across North Eastern transit corridors.</span>
             </p>
           </div>
 
@@ -109,7 +114,8 @@ export const FleetPage: React.FC = () => {
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">local_mall</span>
-              <span>Deliveries (Consignments)</span>
+              <span className="sm:hidden">Deliveries</span>
+              <span className="hidden sm:inline">Deliveries (Consignments)</span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   activeTab === "deliveries" ? "bg-white text-[#003356]" : "bg-[#ebeef4] text-[#72777f]"

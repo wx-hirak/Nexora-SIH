@@ -116,7 +116,10 @@ export const NerGisMap: React.FC = () => {
             <span className="material-symbols-outlined text-[18px] text-[#003356] group-hover:scale-110 transition-transform">
               search
             </span>
-            <span>Search Corridors</span>
+            <span>
+              <span className="sm:hidden">Search</span>
+              <span className="hidden sm:inline">Search Corridors</span>
+            </span>
             {mapFilterChip !== "all" && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full bg-sky-100 text-[#003356] text-[10px] font-bold">
                 Filtered

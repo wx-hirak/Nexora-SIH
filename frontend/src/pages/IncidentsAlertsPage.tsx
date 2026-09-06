@@ -31,40 +31,45 @@ export const IncidentsAlertsPage: React.FC = () => {
           <span className="inline-block w-2 h-2 rounded-full bg-[#ba1a1a] animate-ping" />
           <span className="font-semibold text-[#003356]">Sector 4</span>
           <span>/</span>
-          <span>Arunachal Pradesh & Upper Assam Arterials</span>
-          <span>/</span>
-          <span className="text-[#181c20] font-semibold">Telemetry Feed #4802</span>
+          <span className="sm:hidden text-[#181c20] font-semibold">Feed #4802</span>
+          <span className="hidden sm:inline">Arunachal Pradesh & Upper Assam Arterials</span>
+          <span className="hidden sm:inline">/</span>
+          <span className="hidden sm:inline text-[#181c20] font-semibold">Telemetry Feed #4802</span>
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#003356] tracking-tight">
-              Incidents & Operational Alerts
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#003356] tracking-tight">
+              <span className="sm:hidden">Incidents & Alerts</span>
+              <span className="hidden sm:inline">Incidents & Operational Alerts</span>
             </h1>
             <p className="text-xs sm:text-sm text-[#42474e] max-w-3xl mt-0.5">
-              Real-time hazard telemetry, arterial corridor disruptions, and multi-agency ground dispatch reports across North Eastern transport gateways.
+              <span className="sm:hidden">Hazard telemetry and ground dispatch reports.</span>
+              <span className="hidden sm:inline">Real-time hazard telemetry, arterial corridor disruptions, and multi-agency ground dispatch reports across North Eastern transport gateways.</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <button
               type="button"
               onClick={() => alert("Exporting incident log to CSV...")}
-              className="h-10 px-4 rounded-lg bg-white border border-[#e5e8ee] hover:bg-[#f8fafc] text-xs font-semibold text-[#181c20] shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
+              className="h-9 sm:h-10 px-3 sm:px-4 rounded-lg bg-white border border-[#e5e8ee] hover:bg-[#f8fafc] text-xs font-semibold text-[#181c20] shadow-xs flex items-center gap-1.5 sm:gap-2 transition-colors cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[18px] text-[#27638c]">
+              <span className="material-symbols-outlined text-[17px] sm:text-[18px] text-[#27638c]">
                 file_download
               </span>
-              <span>Export Feed (CSV)</span>
+              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">Export Feed (CSV)</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsReportModalOpen(true)}
-              className="h-10 px-5 rounded-lg bg-[#003356] hover:bg-[#174a73] text-white text-xs font-semibold shadow-xs flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+              className="h-9 sm:h-10 px-3.5 sm:px-5 rounded-lg bg-[#003356] hover:bg-[#174a73] text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 sm:gap-2 transition-all active:scale-95 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[18px]">add_alert</span>
-              <span>+ Report Incident</span>
+              <span className="material-symbols-outlined text-[17px] sm:text-[18px]">add_alert</span>
+              <span className="sm:hidden">+ Report</span>
+              <span className="hidden sm:inline">+ Report Incident</span>
             </button>
           </div>
         </div>

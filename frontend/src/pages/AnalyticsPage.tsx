@@ -18,15 +18,18 @@ export const AnalyticsPage: React.FC = () => {
           <div className="flex items-center gap-2 text-[#72777f] text-xs uppercase tracking-wider font-semibold">
             <span>Sector 4</span>
             <span>/</span>
-            <span>Regional Terrain & Arterial Telemetry</span>
-            <span>/</span>
-            <span className="text-[#003356] font-bold">Predictive Risk Engine #902</span>
+            <span className="sm:hidden text-[#003356] font-bold">Risk Engine #902</span>
+            <span className="hidden sm:inline">Regional Terrain & Arterial Telemetry</span>
+            <span className="hidden sm:inline">/</span>
+            <span className="hidden sm:inline text-[#003356] font-bold">Predictive Risk Engine #902</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#003356] tracking-tight">
-            Analytics & Risk Intelligence
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#003356] tracking-tight">
+            <span className="sm:hidden">Risk Intelligence</span>
+            <span className="hidden sm:inline">Analytics & Risk Intelligence</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#42474e] leading-relaxed">
-            Operational corridor vulnerabilities, weather-impact forecasts, delivery SLA variance, and fleet risk distribution across North Eastern transit gateways.
+            <span className="sm:hidden">Vulnerability analysis & delivery SLA forecasts.</span>
+            <span className="hidden sm:inline">Operational corridor vulnerabilities, weather-impact forecasts, delivery SLA variance, and fleet risk distribution across North Eastern transit gateways.</span>
           </p>
         </div>
 
@@ -34,22 +37,23 @@ export const AnalyticsPage: React.FC = () => {
           {/* Time Horizon Selector */}
           <div className="flex items-center bg-[#f1f4fa] p-1 rounded-lg border border-[#e5e8ee]">
             {[
-              { id: "24h", label: "Last 24 Hours" },
-              { id: "7d", label: "7 Days" },
-              { id: "30d", label: "30 Days" },
-              { id: "monsoon", label: "Monsoon Season" }
+              { id: "24h", shortLabel: "24h", label: "Last 24 Hours" },
+              { id: "7d", shortLabel: "7d", label: "7 Days" },
+              { id: "30d", shortLabel: "30d", label: "30 Days" },
+              { id: "monsoon", shortLabel: "Monsoon", label: "Monsoon Season" }
             ].map((th) => (
               <button
                 key={th.id}
                 type="button"
                 onClick={() => setTimeHorizon(th.id as "24h" | "7d" | "30d" | "monsoon")}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
                   timeHorizon === th.id
                     ? "bg-white text-[#003356] shadow-xs"
                     : "text-[#42474e] hover:text-[#181c20]"
                 }`}
               >
-                {th.label}
+                <span className="sm:hidden">{th.shortLabel}</span>
+                <span className="hidden sm:inline">{th.label}</span>
               </button>
             ))}
           </div>

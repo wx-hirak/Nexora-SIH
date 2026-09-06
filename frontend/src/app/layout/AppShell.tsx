@@ -27,7 +27,7 @@ export const AppShell: React.FC = () => {
 
       {/* Main Content Area: Zero offset on Mobile, Offsets on Tablet/Desktop */}
       <div className="pl-0 md:pl-[260px] lg:pl-[280px] xl:pl-[310px] w-full transition-all duration-200">
-        <main className="pt-16 min-h-screen w-full px-3 sm:px-6 xl:px-8 py-4 sm:py-6 pb-28 md:pb-8">
+        <main className="min-h-screen w-full px-3 sm:px-6 xl:px-8 pt-20 sm:pt-24 pb-28 md:pb-12">
           {/* Connection Error or Stale State Banner (rules.md §3) */}
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#93000a] text-xs font-semibold flex items-center justify-between">
