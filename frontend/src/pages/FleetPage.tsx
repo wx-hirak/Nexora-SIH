@@ -6,8 +6,10 @@ import { RouteComparisonPanel } from "@/features/fleet/RouteComparisonPanel";
 import { useVehicleStore } from "@/stores/vehicleStore";
 import { useShipmentStore } from "@/stores/shipmentStore";
 
-export const FleetPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"vehicles" | "deliveries">("vehicles");
+export const FleetPage: React.FC<{ initialTab?: "vehicles" | "deliveries" }> = ({
+  initialTab = "vehicles"
+}) => {
+  const [activeTab, setActiveTab] = useState<"vehicles" | "deliveries">(initialTab);
   const vehicles = useVehicleStore((s) => s.vehicles);
   const shipments = useShipmentStore((s) => s.shipments);
 

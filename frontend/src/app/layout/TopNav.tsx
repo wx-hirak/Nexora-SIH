@@ -1,36 +1,60 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { DataSourceBadge } from "@/components/DataSourceBadge";
 import { useAlertStore } from "@/stores/alertStore";
 import { useUiStore } from "@/stores/uiStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useDemoScenario } from "@/hooks/useDemoScenario";
 
 export const TopNav: React.FC = () => {
+  const navigate = useNavigate();
   const unreadAlerts = useAlertStore((s) => s.unreadCount);
   const activeRole = useUiStore((s) => s.activeRole);
   const searchQuery = useUiStore((s) => s.searchQuery);
   const setSearchQuery = useUiStore((s) => s.setSearchQuery);
+  const isSidebarCollapsed = useUiStore((s) => s.isSidebarCollapsed);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+  const authUser = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const { demoStatus, runRainfallScenario, resetScenario } = useDemoScenario();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e5e8ee] shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
       <div className="h-16 w-full px-3 sm:px-6 flex items-center justify-between gap-3 sm:gap-6">
-        {/* Brand identity matching Stitch Mobile & Desktop */}
-        <Link to="/" className="flex items-center gap-2.5 shrink-0 group min-w-0">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#f1f4fa] p-1 flex items-center justify-center border border-[#c2c7cf]/40 shadow-xs group-hover:scale-105 transition-transform shrink-0">
-            <Logo size={24} />
-          </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-bold text-sm sm:text-lg text-[#003356] tracking-tight truncate">
-              NER Logistics
+        {/* Sidebar Toggle & Brand Identity */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={isSidebarCollapsed ? "Show navigation panel" : "Hide navigation panel (like Google Maps)"}
+            className="hidden md:flex p-2 rounded-lg text-[#42474e] hover:bg-[#ebeef4] hover:text-[#003356] transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[22px]">
+              {isSidebarCollapsed ? "menu" : "menu_open"}
             </span>
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#005148]/10 text-[#005148] shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#005148] animate-pulse" />
-              <span className="text-[10px] uppercase font-bold tracking-wider">Live</span>
+          </button>
+
+          <Link to="/" className="flex items-center gap-2.5 shrink-0 group min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#f1f4fa] p-1 flex items-center justify-center border border-[#c2c7cf]/40 shadow-xs group-hover:scale-105 transition-transform shrink-0">
+              <Logo size={24} />
             </div>
-          </div>
-        </Link>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-bold text-sm sm:text-lg text-[#003356] tracking-tight truncate">
+                NER Logistics
+              </span>
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#005148]/10 text-[#005148] shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#005148] animate-pulse" />
+                <span className="text-[10px] uppercase font-bold tracking-wider">Live</span>
+              </div>
+            </div>
+          </Link>
+        </div>
 
         {/* Global Search */}
         <div className="flex-1 max-w-xl mx-auto hidden md:block">
@@ -84,7 +108,7 @@ export const TopNav: React.FC = () => {
 
           {/* Notification Button */}
           <Link
-            to="/incidents-alerts"
+            to="/alerts"
             aria-label="Notifications"
             className="relative p-2 rounded-lg text-[#42474e] hover:bg-[#ebeef4] hover:text-[#181c20] transition-colors"
           >
@@ -98,22 +122,32 @@ export const TopNav: React.FC = () => {
 
           {/* User Profile */}
           <Link
-            to="/login"
+            to="/role-selection"
             className="flex items-center gap-2 pl-2 border-l border-[#e5e8ee] hover:opacity-85 transition-opacity"
-            title="Click to switch role or station"
+            title="Configure role or vehicle profile"
           >
-            <div className="w-8 h-8 rounded-full bg-[#003356] flex items-center justify-center text-white shadow-xs">
-              <span className="material-symbols-outlined text-[18px]">person</span>
+            <div className="w-8 h-8 rounded-full bg-[#003356] flex items-center justify-center text-white shadow-xs font-semibold text-xs">
+              {authUser?.role ? authUser.role[0].toUpperCase() : "U"}
             </div>
             <div className="hidden xl:flex flex-col text-left leading-tight">
-              <span className="text-xs font-semibold text-[#181c20]">
-                {activeRole === "admin" ? "auth.admin" : activeRole === "officer" ? "officer.transit" : "op.kamrup"}
+              <span className="text-xs font-semibold text-[#181c20] truncate max-w-[120px]">
+                {authUser?.name || (activeRole === "admin" ? "auth.admin" : activeRole === "officer" ? "officer.transit" : "op.kamrup")}
               </span>
-              <span className="text-[10px] text-[#72777f]">
-                {activeRole === "admin" ? "Authority Console" : activeRole === "officer" ? "Field Officer" : "Control Desk"}
+              <span className="text-[10px] text-[#72777f] capitalize">
+                {authUser?.role ? `${authUser.role} mode` : "Control Desk"}
               </span>
             </div>
           </Link>
+
+          {/* Logout Button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Sign out to login screen"
+            className="p-2 rounded-lg text-[#ba1a1a] hover:bg-[#ffdad6]/40 transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[20px]">logout</span>
+          </button>
         </div>
       </div>
     </header>

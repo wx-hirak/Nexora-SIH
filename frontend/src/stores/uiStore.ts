@@ -18,6 +18,7 @@ interface UiState {
   mapFilterChip: "all" | "blocked" | "at_risk" | "active_fleet";
   isReportModalOpen: boolean;
   isAlertPanelCollapsed: boolean;
+  isSidebarCollapsed: boolean;
   demoScenarioStatus: "idle" | "running" | "flooded" | "rerouted";
   kpis: KpiSummary;
   userGpsLocation: UserGpsLocation | null;
@@ -28,6 +29,8 @@ interface UiState {
   setMapFilterChip: (chip: "all" | "blocked" | "at_risk" | "active_fleet") => void;
   setIsReportModalOpen: (open: boolean) => void;
   setIsAlertPanelCollapsed: (collapsed: boolean) => void;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
   setDemoScenarioStatus: (status: "idle" | "running" | "flooded" | "rerouted") => void;
   setKpis: (kpis: KpiSummary) => void;
   setUserGpsLocation: (loc: UserGpsLocation | null) => void;
@@ -41,6 +44,7 @@ export const useUiStore = create<UiState>((set) => ({
   mapFilterChip: "all",
   isReportModalOpen: false,
   isAlertPanelCollapsed: false,
+  isSidebarCollapsed: false,
   demoScenarioStatus: "idle",
   kpis: initialKpis,
   userGpsLocation: {
@@ -57,6 +61,8 @@ export const useUiStore = create<UiState>((set) => ({
   setMapFilterChip: (mapFilterChip) => set({ mapFilterChip }),
   setIsReportModalOpen: (isReportModalOpen) => set({ isReportModalOpen }),
   setIsAlertPanelCollapsed: (isAlertPanelCollapsed) => set({ isAlertPanelCollapsed }),
+  setIsSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),
+  toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   setDemoScenarioStatus: (demoScenarioStatus) => set({ demoScenarioStatus }),
   setKpis: (kpis) => set({ kpis }),
   setUserGpsLocation: (userGpsLocation) => set({ userGpsLocation })

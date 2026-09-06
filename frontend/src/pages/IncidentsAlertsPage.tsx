@@ -3,8 +3,10 @@ import { useIncidentStore } from "@/stores/incidentStore";
 import { useAlertStore } from "@/stores/alertStore";
 import { useUiStore } from "@/stores/uiStore";
 
-export const IncidentsAlertsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"incidents" | "alerts">("incidents");
+export const IncidentsAlertsPage: React.FC<{ initialTab?: "incidents" | "alerts" }> = ({
+  initialTab = "incidents"
+}) => {
+  const [activeTab, setActiveTab] = useState<"incidents" | "alerts">(initialTab);
   const [alertFilter, setAlertFilter] = useState<"all" | "weather" | "blockade" | "load_cap">("all");
 
   const incidents = useIncidentStore((s) => s.incidents);

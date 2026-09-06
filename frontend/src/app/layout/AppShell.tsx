@@ -13,6 +13,8 @@ export const AppShell: React.FC = () => {
   const { error } = useLiveUpdates();
   const { toastMessage, dismissToast } = useDemoScenario();
   const setIsReportModalOpen = useUiStore((s) => s.setIsReportModalOpen);
+  const isSidebarCollapsed = useUiStore((s) => s.isSidebarCollapsed);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
   return (
     <div className="min-h-screen bg-[#f7f9ff] text-[#181c20] flex flex-col">
@@ -22,11 +24,30 @@ export const AppShell: React.FC = () => {
       {/* Fixed Sidebar (Hidden on Mobile, Visible on Tablet & Desktop) */}
       <Sidebar />
 
+      {/* Google Maps style floating expand tab when sidebar is hidden */}
+      {isSidebarCollapsed && (
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          title="Show navigation panel"
+          className="hidden md:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/95 backdrop-blur-md border border-[#e5e8ee] shadow-[0_4px_16px_rgba(0,51,86,0.12)] hover:bg-[#f1f4fa] text-xs font-bold text-[#003356] transition-all hover:scale-105 active:scale-95 fixed left-4 top-20 z-30 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px]">menu</span>
+          <span>Navigation</span>
+        </button>
+      )}
+
       {/* Report Incident Modal */}
       <ReportIncidentModal />
 
-      {/* Main Content Area: Zero offset on Mobile, Offsets on Tablet/Desktop */}
-      <div className="pl-0 md:pl-[260px] lg:pl-[280px] xl:pl-[310px] w-full transition-all duration-200">
+      {/* Main Content Area: Zero offset when collapsed or on Mobile, Offsets on Tablet/Desktop when open */}
+      <div
+        className={`w-full transition-[padding] duration-300 ease-in-out ${
+          isSidebarCollapsed
+            ? "pl-0"
+            : "pl-0 md:pl-[260px] lg:pl-[280px] xl:pl-[300px]"
+        }`}
+      >
         <main className="min-h-screen w-full px-3 sm:px-6 xl:px-8 pt-20 sm:pt-24 pb-28 md:pb-12">
           {/* Connection Error or Stale State Banner (rules.md §3) */}
           {error && (

@@ -7,11 +7,11 @@ export const BottomNav: React.FC<{ className?: string }> = ({ className = "" }) 
 
   const navItems = [
     { to: "/", label: "Dashboard", icon: "grid_view" },
-    { to: "/fleet", label: "Fleet", icon: "local_shipping" },
+    { to: "/fleet", label: "Fleet & Ops", icon: "local_shipping" },
     {
       to: "/incidents-alerts",
-      label: "Incidents",
-      icon: "emergency",
+      label: "Incidents & Alerts",
+      icon: "warning",
       badge: unreadAlerts > 0 ? unreadAlerts : undefined
     },
     { to: "/analytics", label: "Analytics", icon: "monitoring" },
