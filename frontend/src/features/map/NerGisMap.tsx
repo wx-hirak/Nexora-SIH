@@ -87,12 +87,21 @@ export const NerGisMap: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-[780px] rounded-2xl overflow-hidden bg-slate-50 border border-slate-200/80 shadow-[0_4px_20px_rgba(0,51,86,0.06)] select-none">
-      {/* OVERLAY 1: Floating KPI Metric Cards */}
-      <FloatingKpiCards />
+    <div className="flex flex-col gap-3.5 w-full">
+      {/* Mobile & Tablet (< lg): 2x2 KPI grid above map like Stitch Mobile */}
+      <div className="lg:hidden w-full">
+        <FloatingKpiCards isInline />
+      </div>
 
-      {/* OVERLAY 2: Google Maps-Style Clean Floating Search & Filter Pill Bar */}
-      <div className="absolute top-24 sm:top-28 left-4 z-20 pointer-events-none">
+      {/* Primary Map Viewport with responsive height */}
+      <div className="relative w-full h-[380px] sm:h-[480px] md:h-[580px] lg:h-[760px] rounded-2xl overflow-hidden bg-slate-50 border border-slate-200/80 shadow-[0_4px_20px_rgba(0,51,86,0.06)] select-none">
+        {/* Desktop (lg+): Floating KPI Metric Cards over map */}
+        <div className="hidden lg:block">
+          <FloatingKpiCards />
+        </div>
+
+        {/* OVERLAY 2: Google Maps-Style Clean Floating Search & Filter Pill Bar */}
+        <div className="absolute top-3 sm:top-3 lg:top-28 left-3 sm:left-4 z-20 pointer-events-none">
         {!isSearchOpen && !searchQuery ? (
           /* Hidden by default: Compact sleek search trigger */
           <button
@@ -854,5 +863,6 @@ export const NerGisMap: React.FC = () => {
         )}
       </div>
     </div>
+  </div>
   );
 };

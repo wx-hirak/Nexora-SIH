@@ -11,7 +11,7 @@ export const FloatingAlertPanel: React.FC = () => {
 
   return (
     <div
-      className="map-floating-element absolute bottom-5 left-5 z-20 w-full max-w-sm sm:max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08),0_12px_24px_rgba(0,51,86,0.06)] border border-slate-200/80 overflow-hidden"
+      className="map-floating-element absolute bottom-3 sm:bottom-5 left-3 sm:left-5 z-20 w-[calc(100%-1.5rem)] sm:w-full max-w-xs sm:max-w-md bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08),0_12px_24px_rgba(0,51,86,0.06)] border border-slate-200/80 overflow-hidden"
       id="alert-panel"
     >
       {/* Panel Header */}

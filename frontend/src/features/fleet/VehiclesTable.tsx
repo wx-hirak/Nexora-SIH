@@ -88,8 +88,90 @@ export const VehiclesTable: React.FC = () => {
         </div>
       </div>
 
-      {/* Vehicles Table */}
-      <div className="bg-white rounded-xl border border-[#e5e8ee] shadow-xs overflow-hidden">
+      {/* Mobile Card Feed (Stitch Mobile 19e4b2f4dfdd4beca6d883b4ad5527bb) */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {filteredVehicles.map((veh) => {
+          const isSelected = selectedVehicleId === veh.id;
+          const isDelayed = veh.status === "delayed";
+          const typeIcon =
+            veh.vehicleType === "heavy"
+              ? "local_shipping"
+              : veh.vehicleType === "four-wheeler"
+              ? "rv_hookup"
+              : "two_wheeler";
+
+          return (
+            <div
+              key={veh.id}
+              onClick={() => selectVehicle(veh.id)}
+              className={`bg-white rounded-2xl shadow-sm p-4 border transition-all cursor-pointer relative overflow-hidden ${
+                isSelected
+                  ? "border-[#003356] ring-2 ring-[#003356]/20 bg-sky-50/20"
+                  : "border-slate-200/80 hover:border-slate-300"
+              }`}
+            >
+              <div
+                className={`absolute top-0 left-0 right-0 h-1.5 ${
+                  isDelayed ? "bg-rose-500" : "bg-[#174a73]"
+                }`}
+              />
+
+              <div className="flex items-start justify-between gap-2 pt-1">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs ${
+                      isDelayed ? "bg-rose-600" : "bg-[#003356]"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[22px]">{typeIcon}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold text-slate-900">{veh.id}</span>
+                      <span className="text-xs text-slate-500 capitalize">
+                        • {veh.vehicleType.replace("-", " ")}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 truncate">
+                      {veh.driverName || "Official Driver"} • {veh.currentCorridor || "Guwahati Gateway"}
+                    </p>
+                  </div>
+                </div>
+
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 capitalize ${
+                    isDelayed ? "bg-rose-100 text-rose-800" : "bg-emerald-100 text-emerald-800"
+                  }`}
+                >
+                  {veh.status}
+                </span>
+              </div>
+
+              <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-slate-600 font-medium">
+                  <span className="material-symbols-outlined text-[16px] text-[#27638c]">
+                    speed
+                  </span>
+                  <span>{veh.speedKph} km/h</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-500 text-[11px] truncate max-w-[140px]">
+                    {veh.batteryOrFuelPercent || 85}% fuel/charge
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#f1f4fa] text-[#003356] hover:bg-[#dfe3e8] transition-colors"
+                >
+                  {isSelected ? "Inspecting" : "Inspect"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop & Tablet Vehicles Table */}
+      <div className="hidden md:block bg-white rounded-xl border border-[#e5e8ee] shadow-xs overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#f1f4fa] uppercase text-[11px] text-[#72777f] font-semibold tracking-wider">

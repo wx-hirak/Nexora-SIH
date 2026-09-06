@@ -40,7 +40,20 @@
     font-family: var(--font-sans);
     background-color: #f7f9ff;
     color: #181c20;
+    -webkit-tap-highlight-color: transparent;
   }
+}
+
+/* Safe Area Inset Support (Stitch Mobile Spec) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.min-touch-target {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 /* Material Symbols Outlined Icon Helper */

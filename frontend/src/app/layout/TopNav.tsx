@@ -14,20 +14,21 @@ export const TopNav: React.FC = () => {
   const { demoStatus, runRainfallScenario, resetScenario } = useDemoScenario();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e5e8ee] shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-      <div className="h-16 w-full px-6 flex items-center justify-between gap-6">
-        {/* Brand identity */}
-        <Link to="/" className="flex items-center gap-3 shrink-0 group">
-          <div className="w-9 h-9 rounded-lg bg-[#f1f4fa] p-1 flex items-center justify-center border border-[#c2c7cf]/40 shadow-xs group-hover:scale-105 transition-transform">
-            <Logo size={28} />
+    <header className="fixed top-0 left-0 right-0 z-50 pt-safe bg-[#ffffff]/95 backdrop-blur-md border-b border-[#e5e8ee] shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+      <div className="h-16 w-full px-3 sm:px-6 flex items-center justify-between gap-3 sm:gap-6">
+        {/* Brand identity matching Stitch Mobile & Desktop */}
+        <Link to="/" className="flex items-center gap-2.5 shrink-0 group min-w-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#f1f4fa] p-1 flex items-center justify-center border border-[#c2c7cf]/40 shadow-xs group-hover:scale-105 transition-transform shrink-0">
+            <Logo size={24} />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-lg text-[#003356] tracking-tight">
-              NER Logistics Intelligence
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-bold text-sm sm:text-lg text-[#003356] tracking-tight truncate">
+              NER Logistics
             </span>
-            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-[#ebeef4] text-[#42474e] text-[11px] uppercase tracking-wider font-semibold">
-              Regional Gateway
-            </span>
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#005148]/10 text-[#005148] shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#005148] animate-pulse" />
+              <span className="text-[10px] uppercase font-bold tracking-wider">Live</span>
+            </div>
           </div>
         </Link>
 
@@ -77,7 +78,9 @@ export const TopNav: React.FC = () => {
           </div>
 
           {/* Data Source Badge (FR-19) */}
-          <DataSourceBadge />
+          <div className="hidden sm:inline-flex">
+            <DataSourceBadge />
+          </div>
 
           {/* Notification Button */}
           <Link

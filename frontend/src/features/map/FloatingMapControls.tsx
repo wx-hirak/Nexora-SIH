@@ -18,10 +18,12 @@ export const FloatingMapControls: React.FC<FloatingMapControlsProps> = ({
 }) => {
   const mapLayerMode = useUiStore((s) => s.mapLayerMode);
   const setMapLayerMode = useUiStore((s) => s.setMapLayerMode);
-  const [isLegendOpen, setIsLegendOpen] = useState(true);
+  const [isLegendOpen, setIsLegendOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : false
+  );
 
   return (
-    <div className="absolute bottom-5 right-5 z-20 flex flex-col items-end gap-3 pointer-events-none">
+    <div className="absolute bottom-3 sm:bottom-5 right-3 sm:right-5 z-20 flex flex-col items-end gap-2 sm:gap-3 pointer-events-none">
       {/* Interactive Clean Map Legend (Collapsible) */}
       <div className="map-floating-element bg-white/95 backdrop-blur-md p-3.5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08),0_12px_24px_rgba(0,51,86,0.06)] border border-slate-200/80 pointer-events-auto max-w-xs transition-all">
         <div className="flex items-center justify-between gap-4 pb-2 border-b border-slate-100">

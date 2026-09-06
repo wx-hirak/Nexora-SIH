@@ -85,8 +85,83 @@ export const ConsignmentsTable: React.FC = () => {
         </div>
       </div>
 
-      {/* Consignments Data Table */}
-      <div className="bg-white rounded-xl border border-[#e5e8ee] shadow-xs overflow-hidden">
+      {/* Mobile Consignment Card Feed */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {filteredShipments.map((shp) => {
+          const isSelected = selectedShipmentId === shp.id;
+          const isAtRisk = shp.status === "at_risk" || shp.status === "delayed";
+
+          return (
+            <div
+              key={shp.id}
+              onClick={() => selectShipment(shp.id)}
+              className={`bg-white rounded-2xl shadow-sm p-4 border transition-all cursor-pointer relative overflow-hidden ${
+                isSelected
+                  ? "border-[#003356] ring-2 ring-[#003356]/20 bg-sky-50/20"
+                  : "border-slate-200/80 hover:border-slate-300"
+              }`}
+            >
+              <div
+                className={`absolute top-0 left-0 right-0 h-1.5 ${
+                  isAtRisk ? "bg-amber-500" : "bg-[#005148]"
+                }`}
+              />
+
+              <div className="flex items-start justify-between gap-2 pt-1">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-slate-900">{shp.id}</span>
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        shp.priority === 1
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-sky-100 text-sky-800"
+                      }`}
+                    >
+                      P{shp.priority}
+                    </span>
+                  </div>
+                  <h3 className="text-xs font-semibold text-slate-800 mt-0.5">{shp.commodity}</h3>
+                  <p className="text-[11px] text-slate-500">
+                    {shp.origin} ➔ {shp.destination}
+                  </p>
+                </div>
+
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold capitalize shrink-0 ${
+                    isAtRisk ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                  }`}
+                >
+                  {shp.status.replace("_", " ")}
+                </span>
+              </div>
+
+              <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-20 h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className="h-full bg-[#174a73]"
+                      style={{ width: `${shp.progressPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-medium text-slate-600">
+                    {shp.progressPercent}%
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#174a73] text-white hover:bg-[#003356] transition-colors"
+                >
+                  Compare Route
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop & Tablet Consignments Data Table */}
+      <div className="hidden md:block bg-white rounded-xl border border-[#e5e8ee] shadow-xs overflow-hidden">
         <div className="overflow-x-auto w-full">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#f1f4fa] uppercase text-[11px] text-[#72777f] font-semibold tracking-wider">

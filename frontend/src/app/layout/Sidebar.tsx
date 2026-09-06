@@ -29,7 +29,7 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="fixed left-0 top-16 bottom-0 w-[280px] xl:w-[310px] bg-[#ffffff] border-r border-[#e5e8ee] z-40 flex flex-col justify-between py-4 px-3 shadow-[0_1px_8px_rgba(0,0,0,0.03)]">
+    <aside className="hidden md:flex fixed left-0 top-16 bottom-0 w-[260px] lg:w-[280px] xl:w-[310px] bg-[#ffffff] border-r border-[#e5e8ee] z-40 flex-col justify-between py-4 px-3 shadow-[0_1px_8px_rgba(0,0,0,0.03)]">
       {/* Top Nav Links */}
       <div className="flex flex-col gap-1">
         <nav className="flex flex-col gap-1 w-full">

@@ -66,7 +66,7 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Section 1: Accessibility Summary & Corridor Posture (KPIs) */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <section className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-4">
         <div className="bg-white p-4 rounded-xl border border-[#e5e8ee] shadow-xs flex flex-col justify-between">
           <span className="text-[11px] text-[#72777f] uppercase tracking-wider font-semibold">
             Monitored Corridors

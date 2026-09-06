@@ -70,22 +70,22 @@ export const IncidentsAlertsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Metrics Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-[#e5e8ee] shadow-xs flex flex-col justify-between">
+      {/* Summary Metrics Bar: 2x2 Grid on Mobile/Tablet */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3 sm:p-4 rounded-xl border border-[#e5e8ee] shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase tracking-wider text-[#72777f] font-semibold">
-              Total Active Incidents
+            <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-[#72777f] font-semibold truncate">
+              Active Incidents
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-[#ffdad6] text-[#ba1a1a] text-[10px] font-bold">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-[#ffdad6] text-[#ba1a1a] text-[9px] sm:text-[10px] font-bold">
               Critical
             </span>
           </div>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-bold text-[#181c20]">{incidents.length}</span>
-            <span className="text-xs text-[#ba1a1a] font-medium">corridors impacted</span>
+          <div className="flex items-baseline gap-1.5 sm:gap-2 mt-1.5">
+            <span className="text-2xl sm:text-3xl font-bold text-[#181c20]">{incidents.length}</span>
+            <span className="text-[11px] sm:text-xs text-[#ba1a1a] font-medium truncate">impacted</span>
           </div>
-          <div className="mt-2 text-[11px] text-[#72777f]">Avg verification time: 14 mins</div>
+          <div className="mt-1.5 text-[10px] sm:text-[11px] text-[#72777f] truncate">Avg response: 14m</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-[#e5e8ee] shadow-xs flex flex-col justify-between">
