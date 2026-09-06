@@ -55,10 +55,7 @@ npm run lint
 │   ├── public/                   # Static assets & brand vectors
 │   ├── package.json
 │   └── vite.config.ts
-├── architecture.md               # System architecture & DataProvider specifications
-├── prd.md                        # Product requirements & flagship demo flow
-├── phase.md                      # Milestone & phase tracking
-└── rules.md                      # Engineering, tech stack & aesthetic constraints
+└── architecture.md               # System architecture & DataProvider specifications
 ```
 
 ---

@@ -126,3 +126,9 @@ ner-logistics-frontend/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Local specification files (not tracked on remote)
+phase.md
+prd.md
+rules.md
+
