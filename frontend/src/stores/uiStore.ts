@@ -19,6 +19,7 @@ interface UiState {
   isReportModalOpen: boolean;
   isAlertPanelCollapsed: boolean;
   isSidebarCollapsed: boolean;
+  isMapPanelCollapsed: boolean;
   demoScenarioStatus: "idle" | "running" | "flooded" | "rerouted";
   kpis: KpiSummary;
   userGpsLocation: UserGpsLocation | null;
@@ -31,6 +32,8 @@ interface UiState {
   setIsAlertPanelCollapsed: (collapsed: boolean) => void;
   setIsSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
+  setIsMapPanelCollapsed: (collapsed: boolean) => void;
+  toggleMapPanel: () => void;
   setDemoScenarioStatus: (status: "idle" | "running" | "flooded" | "rerouted") => void;
   setKpis: (kpis: KpiSummary) => void;
   setUserGpsLocation: (loc: UserGpsLocation | null) => void;
@@ -43,8 +46,9 @@ export const useUiStore = create<UiState>((set) => ({
   mapLayerMode: "terrain",
   mapFilterChip: "all",
   isReportModalOpen: false,
-  isAlertPanelCollapsed: false,
+  isAlertPanelCollapsed: true,
   isSidebarCollapsed: false,
+  isMapPanelCollapsed: false,
   demoScenarioStatus: "idle",
   kpis: initialKpis,
   userGpsLocation: {
@@ -63,6 +67,8 @@ export const useUiStore = create<UiState>((set) => ({
   setIsAlertPanelCollapsed: (isAlertPanelCollapsed) => set({ isAlertPanelCollapsed }),
   setIsSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+  setIsMapPanelCollapsed: (isMapPanelCollapsed) => set({ isMapPanelCollapsed }),
+  toggleMapPanel: () => set((state) => ({ isMapPanelCollapsed: !state.isMapPanelCollapsed })),
   setDemoScenarioStatus: (demoScenarioStatus) => set({ demoScenarioStatus }),
   setKpis: (kpis) => set({ kpis }),
   setUserGpsLocation: (userGpsLocation) => set({ userGpsLocation })
