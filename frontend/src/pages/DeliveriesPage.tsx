@@ -1,10 +1,30 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ConsignmentsTable } from "@/features/fleet/ConsignmentsTable";
 import { RouteComparisonPanel } from "@/features/fleet/RouteComparisonPanel";
+import { CreateShipmentModal } from "@/features/fleet/CreateShipmentModal";
 import { useShipmentStore } from "@/stores/shipmentStore";
+import { shipmentApi } from "@/services/api/apiClient";
 
 export const DeliveriesPage: React.FC = () => {
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const shipments = useShipmentStore((s) => s.shipments);
+  const setShipments = useShipmentStore((s) => s.setShipments);
+  const selectShipment = useShipmentStore((s) => s.selectShipment);
+
+  const loadShipments = useCallback(async () => {
+    try {
+      const list = await shipmentApi.getAll();
+      if (list && list.length > 0) {
+        setShipments(list);
+      }
+    } catch (err) {
+      console.warn("Could not fetch shipments from backend on DeliveriesPage:", err);
+    }
+  }, [setShipments]);
+
+  useEffect(() => {
+    loadShipments();
+  }, [loadShipments]);
 
   const atRiskCount = shipments.filter((s) => s.status === "at_risk").length;
   const onTimeCount = shipments.filter((s) => s.status === "on_time").length;
@@ -35,8 +55,16 @@ export const DeliveriesPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Quick Metrics */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Header Actions: Create Shipment CTA + Metrics */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="h-10 px-4 rounded-xl bg-[#003356] hover:bg-[#174a73] text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">add_circle</span>
+              <span>Create Shipment</span>
+            </button>
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-[#e5e8ee] shadow-xs">
               <span className="material-symbols-outlined text-[18px] text-[#27638c]">
                 inventory_2
@@ -94,9 +122,19 @@ export const DeliveriesPage: React.FC = () => {
 
       {/* Main Split Layout: Consignments Table + Route Comparison */}
       <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
-        <ConsignmentsTable />
+        <ConsignmentsTable onOpenCreateModal={() => setIsCreateModalOpen(true)} />
         <RouteComparisonPanel />
       </div>
+
+      {/* Create Consignment Modal */}
+      <CreateShipmentModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={(id) => {
+          loadShipments();
+          selectShipment(id);
+        }}
+      />
     </div>
   );
 };

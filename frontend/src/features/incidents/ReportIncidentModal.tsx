@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useUiStore } from "@/stores/uiStore";
 import { useDataProvider } from "@/app/providers/DataProviderContext";
 import { useRoadStore } from "@/stores/roadStore";
+import { useIncidentStore } from "@/stores/incidentStore";
 import { useLiveLocation } from "@/hooks/useLiveLocation";
 import { LiveCameraCapture } from "@/components/LiveCameraCapture";
 import type { Severity, Incident } from "@/types/domain";
@@ -11,6 +12,7 @@ export const ReportIncidentModal: React.FC = () => {
   const setIsOpen = useUiStore((s) => s.setIsReportModalOpen);
   const { provider } = useDataProvider();
   const roads = useRoadStore((s) => s.roads);
+  const addIncident = useIncidentStore((s) => s.addIncident);
 
   // Live GPS hook with automatic initial request and continuous watchPosition capability
   const {
@@ -24,9 +26,7 @@ export const ReportIncidentModal: React.FC = () => {
     presets
   } = useLiveLocation(true);
 
-  const [type, setType] = useState<
-    "flood" | "landslide" | "road_blocked" | "accident" | "bridge_damage" | "traffic" | "other"
-  >("landslide");
+  const [type, setType] = useState<Incident["type"]>("landslide");
   const [severity, setSeverity] = useState<Severity>("high");
   const [affectedRoadId, setAffectedRoadId] = useState("NH-6");
   const [title, setTitle] = useState("");
@@ -38,6 +38,7 @@ export const ReportIncidentModal: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOfflineSimulated, setIsOfflineSimulated] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -46,9 +47,42 @@ export const ReportIncidentModal: React.FC = () => {
     if (!title.trim() || !description.trim()) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
       const selectedRoad = roads.find((r) => r.id === affectedRoadId);
-      await provider.submitIncident({
+
+      if (isOfflineSimulated) {
+        // Explicitly test offline simulation flow (PRD FR-14)
+        const offlineInc: Incident = {
+          title,
+          type,
+          severity,
+          affectedRoadId,
+          corridorName: selectedRoad?.name || affectedRoadId,
+          description,
+          lat: coords.lat,
+          lng: coords.lng,
+          photoUrl:
+            photoPreview ||
+            "https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=600&q=80",
+          reportedBy: "Field Officer (Offline Field Terminal)",
+          agency: "NER Emergency Transit Cell",
+          impact: `Carriageway blocked at ${readableLocation}. Queued in pending sync buffer.`,
+          id: `INC-OFFLINE-${Date.now().toString().slice(-4)}`,
+          createdAt: new Date().toISOString(),
+          status: "pending",
+          syncStatus: "pending_sync"
+        };
+        addIncident(offlineInc);
+        setIsOpen(false);
+        setTitle("");
+        setDescription("");
+        setPhotoPreview(null);
+        setIsCameraActive(false);
+        return;
+      }
+
+      const inc = await provider.submitIncident({
         title,
         type,
         severity,
@@ -65,14 +99,19 @@ export const ReportIncidentModal: React.FC = () => {
         impact: `Carriageway blocked at ${readableLocation}. Live telemetry attached.`
       });
 
+      // Synchronize immediately with local domain store (architecture.md §3)
+      addIncident(inc);
+
       // Close modal on success
       setIsOpen(false);
       setTitle("");
       setDescription("");
       setPhotoPreview(null);
       setIsCameraActive(false);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Submission error:", err);
+      const msg = err instanceof Error ? err.message : "Failed to submit incident report";
+      setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -105,6 +144,13 @@ export const ReportIncidentModal: React.FC = () => {
 
         {/* Modal Body / Form */}
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+          {errorMessage && (
+            <div className="p-3.5 rounded-xl bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#93000a] text-xs font-semibold flex items-center gap-2">
+              <span className="material-symbols-outlined text-[20px]">error</span>
+              <span>Submission Failed: {errorMessage}</span>
+            </div>
+          )}
+
           {/* ================= SECTION 1: LIVE LOCATION SHARING THROUGH GPS ================= */}
           <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col gap-2.5">
             <div className="flex items-center justify-between flex-wrap gap-2">

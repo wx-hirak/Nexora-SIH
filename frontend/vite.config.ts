@@ -17,4 +17,69 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    port: 3000,
+    proxy: {
+      '/auth': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/vehicles': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/incidents': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/shipments': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/roads': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/routes': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/alerts': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/weather': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/kpis': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/snapshot': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/demo': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api': {
+        target: 'https://1wcg1sk4-5000.inc1.devtunnels.ms',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
 })

@@ -7,11 +7,13 @@ export const RouteComparisonPanel: React.FC = () => {
   const selectedShipmentId = useShipmentStore((s) => s.selectedShipmentId);
   const shipments = useShipmentStore((s) => s.shipments);
   const routes = useShipmentStore((s) => s.routes);
+  const applyShipmentsPatch = useShipmentStore((s) => s.applyPatch);
   const { provider } = useDataProvider();
   const setIsReportModalOpen = useUiStore((s) => s.setIsReportModalOpen);
 
   const [isRerouting, setIsRerouting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const shipment = shipments.find((s) => s.id === selectedShipmentId) || shipments[0];
   if (!shipment) return null;
@@ -21,12 +23,19 @@ export const RouteComparisonPanel: React.FC = () => {
 
   const handleSwitchRoute = async (targetRouteId: string) => {
     setIsRerouting(true);
+    setErrorMessage(null);
     try {
-      await provider.requestReroute(shipment.id, targetRouteId);
+      const updated = await provider.requestReroute(shipment.id, targetRouteId);
+      if (updated) {
+        applyShipmentsPatch([updated]);
+      }
       setSuccessMessage(`Consignment rerouted successfully via ${targetRouteId === "ROUTE-B" ? "Route B (Jowai Bypass)" : "Route A"}!`);
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Reroute error:", err);
+      const msg = err instanceof Error ? err.message : "Reroute request failed";
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setIsRerouting(false);
     }
@@ -71,6 +80,13 @@ export const RouteComparisonPanel: React.FC = () => {
         <div className="p-3 rounded-lg bg-[#e6f4ea] border border-[#34a853]/40 text-[#137333] text-xs font-semibold flex items-center gap-2">
           <span className="material-symbols-outlined text-[18px]">check_circle</span>
           <span>{successMessage}</span>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="p-3 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#93000a] text-xs font-semibold flex items-center gap-2">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          <span>{errorMessage}</span>
         </div>
       )}
 

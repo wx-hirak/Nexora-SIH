@@ -10,7 +10,7 @@ import { useUiStore } from "@/stores/uiStore";
 
 export const AppShell: React.FC = () => {
   // Activate live updates stream
-  const { error } = useLiveUpdates();
+  const { error, retry } = useLiveUpdates();
   const { toastMessage, dismissToast } = useDemoScenario();
   const setIsReportModalOpen = useUiStore((s) => s.setIsReportModalOpen);
   const isSidebarCollapsed = useUiStore((s) => s.isSidebarCollapsed);
@@ -37,11 +37,18 @@ export const AppShell: React.FC = () => {
         <main className="min-h-screen w-full px-3 sm:px-6 xl:px-8 pt-20 sm:pt-24 pb-28 md:pb-12">
           {/* Connection Error or Stale State Banner (rules.md §3) */}
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#93000a] text-xs font-semibold flex items-center justify-between">
+            <div className="mb-4 p-3.5 rounded-xl bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#93000a] text-xs font-semibold flex items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">wifi_off</span>
-                <span>Connection Stale: {error}. Falling back to cached local simulation state.</span>
+                <span>Connection Stale: {error}. Operating on cached local simulation state.</span>
               </div>
+              <button
+                type="button"
+                onClick={retry}
+                className="px-3 py-1 bg-[#ba1a1a] text-white rounded-md text-[11px] font-bold hover:bg-[#93000a] transition-colors cursor-pointer shrink-0"
+              >
+                Retry Connection
+              </button>
             </div>
           )}
 

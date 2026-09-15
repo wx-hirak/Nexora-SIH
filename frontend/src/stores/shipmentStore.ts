@@ -6,6 +6,7 @@ interface ShipmentState {
   routes: RouteOption[];
   selectedShipmentId: string | null;
   setShipments: (shipments: Shipment[], routes?: RouteOption[]) => void;
+  addShipment: (shipment: Shipment, route?: RouteOption) => void;
   applyPatch: (shipments?: Shipment[], routes?: RouteOption[]) => void;
   selectShipment: (id: string | null) => void;
 }
@@ -19,6 +20,12 @@ export const useShipmentStore = create<ShipmentState>((set) => ({
       shipments,
       ...(routes ? { routes } : {})
     }),
+  addShipment: (shipment, route) =>
+    set((state) => ({
+      shipments: [shipment, ...state.shipments],
+      routes: route ? [route, ...state.routes] : state.routes,
+      selectedShipmentId: shipment.id
+    })),
   applyPatch: (patchedShipments, patchedRoutes) =>
     set((state) => {
       let nextShipments = state.shipments;

@@ -7,6 +7,8 @@ interface FloatingMapControlsProps {
   onZoomOut?: () => void;
   onCenterMyLocation?: () => void;
   isMyLocationActive?: boolean;
+  onToggleFullscreen?: () => void;
+  isFullscreen?: boolean;
 }
 
 export const FloatingMapControls: React.FC<FloatingMapControlsProps> = ({
@@ -14,7 +16,9 @@ export const FloatingMapControls: React.FC<FloatingMapControlsProps> = ({
   onZoomIn,
   onZoomOut,
   onCenterMyLocation,
-  isMyLocationActive = false
+  isMyLocationActive = false,
+  onToggleFullscreen,
+  isFullscreen = false
 }) => {
   const mapLayerMode = useUiStore((s) => s.mapLayerMode);
   const setMapLayerMode = useUiStore((s) => s.setMapLayerMode);
@@ -148,6 +152,24 @@ export const FloatingMapControls: React.FC<FloatingMapControlsProps> = ({
           >
             <span className="material-symbols-outlined text-[20px]">filter_center_focus</span>
           </button>
+
+          {/* Fullscreen Map Toggle */}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? "Exit Fullscreen (Esc)" : "Full Screen Map View"}
+              className={`p-3 transition-colors cursor-pointer flex items-center justify-center ${
+                isFullscreen
+                  ? "bg-[#003356] text-white hover:bg-[#174a73]"
+                  : "text-slate-700 hover:bg-slate-100 hover:text-[#003356]"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                {isFullscreen ? "fullscreen_exit" : "fullscreen"}
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </div>

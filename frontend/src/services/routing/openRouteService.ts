@@ -1,3 +1,6 @@
+import axios from "axios";
+import { routeAlternativesApi } from "@/services/api/apiClient";
+
 export interface CalculatedRoute {
   id: string;
   name: string;
@@ -31,9 +34,9 @@ export const DEFAULT_ENDPOINTS: RouteEndpoints = {
     lng: 91.7362
   },
   destination: {
-    name: "Shillong Medical Logistics Node",
-    lat: 25.5788,
-    lng: 91.8933
+    name: "Itanagar Logistics Terminal",
+    lat: 27.0844,
+    lng: 93.6167
   }
 };
 
@@ -41,41 +44,36 @@ export const DEFAULT_ENDPOINTS: RouteEndpoints = {
 const FALLBACK_ROUTES: CalculatedRoute[] = [
   {
     id: "route-direct",
-    name: "Route A — Direct NH-6 Expressway",
+    name: "Route A — Direct Corridor",
     isAlternative: false,
-    distanceKm: 98,
-    durationMinutes: 135,
-    etaFormatted: "2h 15m",
-    via: "Guwahati ➔ Khanapara ➔ Nongpoh ➔ Umiam ➔ Shillong",
-    summary: "Shortest direct arterial route via NH-6 4-lane corridor",
+    distanceKm: 294.7,
+    durationMinutes: 225,
+    etaFormatted: "3h 45m",
+    via: "Guwahati ➔ Tezpur ➔ Gohpur ➔ Itanagar",
+    summary: "Primary arterial corridor via NH-27 / NH-15",
     coordinates: [
       [26.1445, 91.7362],
-      [26.1100, 91.7800],
-      [26.0200, 91.8300],
-      [25.9000, 91.8800],
-      [25.7200, 91.8700],
-      [25.6500, 91.8800],
-      [25.6100, 91.8900],
-      [25.5788, 91.8933]
+      [26.2500, 92.1000],
+      [26.6300, 92.8000],
+      [26.8500, 93.2000],
+      [27.0844, 93.6167]
     ]
   },
   {
     id: "route-bypass",
-    name: "Route B — Safe Lowland Bypass (Via Jowai)",
+    name: "Route B — Alternate Lowland Bypass",
     isAlternative: true,
-    distanceKm: 134,
-    durationMinutes: 180,
-    etaFormatted: "3h 00m",
-    via: "Guwahati ➔ Jagiroad ➔ Umsning East ➔ Jowai ➔ Shillong",
-    summary: "Weather-safe detour avoiding active flood zones on NH-6 KM 48",
+    distanceKm: 320.0,
+    durationMinutes: 260,
+    etaFormatted: "4h 20m",
+    via: "Guwahati ➔ Nagaon ➔ Jorhat Bypass ➔ Itanagar",
+    summary: "Weather-safe detour avoiding active flood zones",
     coordinates: [
       [26.1445, 91.7362],
-      [26.1200, 92.0500],
-      [26.0800, 92.2000],
-      [25.8000, 92.1500],
-      [25.5100, 92.2100],
-      [25.5300, 92.0500],
-      [25.5788, 91.8933]
+      [26.3500, 92.6800],
+      [26.7500, 93.5000],
+      [27.0000, 93.7000],
+      [27.0844, 93.6167]
     ]
   }
 ];
@@ -88,13 +86,33 @@ function formatDuration(minutes: number): string {
 }
 
 /**
- * Fetch directions from OpenRouteService API or fall back gracefully
- * if no API key is provided or the network call fails.
+ * Fetch directions from live backend POST /routes/alternatives API using Axios,
+ * or fall back gracefully if the network call fails.
  */
 export async function calculateRoute(
   start: { lat: number; lng: number } = DEFAULT_ENDPOINTS.start,
   destination: { lat: number; lng: number } = DEFAULT_ENDPOINTS.destination
 ): Promise<CalculatedRoute[]> {
+  try {
+    // Primary: Call live backend POST /routes/alternatives with GeoJSON [lng, lat]
+    const backendRoutes = await routeAlternativesApi.fetchParsedAlternatives({
+      origin: {
+        type: "Point",
+        coordinates: [start.lng, start.lat]
+      },
+      destination: {
+        type: "Point",
+        coordinates: [destination.lng, destination.lat]
+      }
+    });
+
+    if (backendRoutes && backendRoutes.length > 0) {
+      return backendRoutes;
+    }
+  } catch (err) {
+    console.warn("Live backend route alternatives API unavailable, trying fallback:", err);
+  }
+
   const apiKey = import.meta.env.VITE_OPENROUTESERVICE_API_KEY?.trim();
 
   // If no API key configured, use high-fidelity fallback routes
@@ -103,37 +121,35 @@ export async function calculateRoute(
   }
 
   try {
-    const response = await fetch(
+    const response = await axios.post<{
+      features?: Array<{
+        geometry: { coordinates: [number, number][] };
+        properties: { summary?: { distance: number; duration: number } };
+      }>;
+    }>(
       "https://api.openrouteservice.org/v2/directions/driving-car/geojson",
       {
-        method: "POST",
+        coordinates: [
+          [start.lng, start.lat],
+          [destination.lng, destination.lat]
+        ],
+        alternative_routes: {
+          target_count: 2,
+          weight_factor: 1.4
+        },
+        units: "km"
+      },
+      {
+        timeout: 6000,
         headers: {
           Accept: "application/json, application/geo+json",
           Authorization: apiKey,
           "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          coordinates: [
-            [start.lng, start.lat],
-            [destination.lng, destination.lat]
-          ],
-          alternative_routes: {
-            target_count: 2,
-            weight_factor: 1.4
-          },
-          units: "km"
-        })
+        }
       }
     );
 
-    if (!response.ok) {
-      console.warn(
-        `OpenRouteService returned status ${response.status}. Using fallback routes.`
-      );
-      return FALLBACK_ROUTES;
-    }
-
-    const data = await response.json();
+    const data = response.data;
     if (!data.features || !Array.isArray(data.features) || data.features.length === 0) {
       return FALLBACK_ROUTES;
     }

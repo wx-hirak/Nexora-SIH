@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useDataProvider } from "@/app/providers/DataProviderContext";
 import { useVehicleStore } from "@/stores/vehicleStore";
 import { useRoadStore } from "@/stores/roadStore";
@@ -7,9 +7,10 @@ import { useShipmentStore } from "@/stores/shipmentStore";
 import { useAlertStore } from "@/stores/alertStore";
 import { useWeatherStore } from "@/stores/weatherStore";
 import { useUiStore } from "@/stores/uiStore";
+import { initialSnapshot } from "@/services/mock/seedData";
 
 export function useLiveUpdates() {
-  const { provider, sourceType } = useDataProvider();
+  const { provider, sourceType, reconnectKey, triggerReconnect } = useDataProvider();
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,12 +34,17 @@ export function useLiveUpdates() {
 
   const setKpis = useUiStore((s) => s.setKpis);
 
+  const retry = useCallback(() => {
+    triggerReconnect();
+  }, [triggerReconnect]);
+
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     let isMounted = true;
 
     async function init() {
       try {
+        setError(null);
         const snapshot = await provider.connect();
         if (!isMounted) return;
 
@@ -69,9 +75,19 @@ export function useLiveUpdates() {
         });
       } catch (err: unknown) {
         if (isMounted) {
-          const message = err instanceof Error ? err.message : "Failed to connect to data provider";
+          const message = err instanceof Error ? err.message : "Failed to connect to backend data provider";
+          console.warn("useLiveUpdates connection error, loading cached baseline state:", message);
           setError(message);
           setIsConnected(false);
+
+          // Seed stores with fallback baseline so app never renders blank
+          setVehicles(initialSnapshot.vehicles);
+          setRoads(initialSnapshot.roads);
+          setIncidents(initialSnapshot.incidents);
+          setShipments(initialSnapshot.shipments, initialSnapshot.routes);
+          setAlerts(initialSnapshot.alerts);
+          setWeather(initialSnapshot.weather);
+          setKpis(initialSnapshot.kpis);
         }
       }
     }
@@ -85,6 +101,7 @@ export function useLiveUpdates() {
     };
   }, [
     provider,
+    reconnectKey,
     setVehicles,
     applyVehiclesPatch,
     setRoads,
@@ -100,5 +117,5 @@ export function useLiveUpdates() {
     setKpis
   ]);
 
-  return { isConnected, error, sourceType };
+  return { isConnected, error, sourceType, retry };
 }

@@ -13,13 +13,45 @@ import { useRoadStore } from "@/stores/roadStore";
 import { useVehicleStore } from "@/stores/vehicleStore";
 import { useIncidentStore } from "@/stores/incidentStore";
 import { useUiStore } from "@/stores/uiStore";
+import { useShipmentStore } from "@/stores/shipmentStore";
 import { initialRoads, initialVehicles, initialIncidents } from "@/services/mock/seedData";
 import { DashboardMapControlPanel } from "./DashboardMapControlPanel";
 import {
-  calculateRoute,
-  DEFAULT_ENDPOINTS,
-  type CalculatedRoute
-} from "@/services/routing/openRouteService";
+  routeAlternativesApi,
+  type ParsedAlternativeRoute,
+  DEFAULT_ROUTE_COORDINATES,
+  formatAxiosError
+} from "@/services/api/apiClient";
+
+// Helper component to automatically fit map bounds to the active route polyline
+function RouteBoundsFitter({
+  routeCoordinates,
+  activeRouteId
+}: {
+  routeCoordinates: [number, number][];
+  activeRouteId?: string;
+}) {
+  const map = useMap();
+  const prevIdRef = React.useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (routeCoordinates && routeCoordinates.length > 0 && prevIdRef.current !== activeRouteId) {
+      prevIdRef.current = activeRouteId;
+      const latLngs = routeCoordinates.map(([lat, lng]) => L.latLng(lat, lng));
+      const bounds = L.latLngBounds(latLngs);
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 13,
+          animate: true,
+          duration: 0.8
+        });
+      }
+    }
+  }, [routeCoordinates, activeRouteId, map]);
+
+  return null;
+}
 
 // Helper component to control map panning and zooming from inside MapContainer
 function MapController({
@@ -45,15 +77,38 @@ function MapController({
   return null;
 }
 
-// Minimal Floating Map Controls (+ / − zoom, my location, recenter)
+// Helper component to trigger map.invalidateSize() on fullscreen transition
+function MapResizer({ isFullscreen }: { isFullscreen: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const timer1 = setTimeout(() => map.invalidateSize({ animate: false }), 50);
+    const timer2 = setTimeout(() => map.invalidateSize({ animate: false }), 200);
+    const timer3 = setTimeout(() => map.invalidateSize({ animate: true }), 450);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [isFullscreen, map]);
+
+  return null;
+}
+
+// Minimal Floating Map Controls (+ / − zoom, my location, recenter, fullscreen)
 function FloatingMapControlsInside({
   onCenterMyLocation,
   onRecenter,
-  isMyLocationActive
+  isMyLocationActive,
+  onToggleFullscreen,
+  isFullscreen
 }: {
   onCenterMyLocation: () => void;
   onRecenter: () => void;
   isMyLocationActive: boolean;
+  onToggleFullscreen: () => void;
+  isFullscreen: boolean;
 }) {
   const map = useMap();
 
@@ -99,6 +154,21 @@ function FloatingMapControlsInside({
           aria-label="Recenter Map"
         >
           <span className="material-symbols-outlined text-[20px]">filter_center_focus</span>
+        </button>
+        <button
+          type="button"
+          onClick={onToggleFullscreen}
+          className={`p-2.5 sm:p-3 transition-colors cursor-pointer flex items-center justify-center ${
+            isFullscreen
+              ? "bg-[#003356] text-white hover:bg-[#174a73]"
+              : "text-slate-700 hover:bg-slate-100 hover:text-[#003356]"
+          }`}
+          title={isFullscreen ? "Exit Fullscreen (Esc)" : "Expand Map Fullscreen"}
+          aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+        >
+          <span className="material-symbols-outlined text-[20px]">
+            {isFullscreen ? "fullscreen_exit" : "fullscreen"}
+          </span>
         </button>
       </div>
     </div>
@@ -184,12 +254,23 @@ const createLiveUserGpsIcon = () => {
   });
 };
 
+const DEFAULT_MAP_CENTER: [number, number] = [26.2006, 92.9376];
+
 export const NerGisMap: React.FC = () => {
   const roadsFromStore = useRoadStore((s) => s.roads);
   const vehiclesFromStore = useVehicleStore((s) => s.vehicles);
   const incidentsFromStore = useIncidentStore((s) => s.incidents);
   const mapFilterChip = useUiStore((s) => s.mapFilterChip);
   const userGpsLocation = useUiStore((s) => s.userGpsLocation);
+
+  // Sync with shipmentStore
+  const shipments = useShipmentStore((s) => s.shipments);
+  const selectedShipmentId = useShipmentStore((s) => s.selectedShipmentId);
+  const storeRoutes = useShipmentStore((s) => s.routes);
+
+  const activeShipment = useMemo(() => {
+    return shipments.find((s) => s.id === selectedShipmentId) || shipments[0] || null;
+  }, [shipments, selectedShipmentId]);
 
   // Fallback to initial seeds if store has not hydrated yet
   const roads = roadsFromStore.length > 0 ? roadsFromStore : initialRoads;
@@ -199,35 +280,171 @@ export const NerGisMap: React.FC = () => {
   // Search state connected to DashboardMapControlPanel
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Fullscreen viewport state with Browser API + in-app overlay fallback
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const mapWrapperRef = React.useRef<HTMLDivElement | null>(null);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (!isFullscreen) {
+      if (mapWrapperRef.current?.requestFullscreen) {
+        try {
+          await mapWrapperRef.current.requestFullscreen();
+        } catch {
+          // Browser Fullscreen API denied or unsupported; in-app state handles it
+        }
+      }
+      setIsFullscreen(true);
+    } else {
+      if (document.fullscreenElement) {
+        try {
+          await document.exitFullscreen();
+        } catch {
+          // Ignore
+        }
+      }
+      setIsFullscreen(false);
+    }
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isDocFs = !!document.fullscreenElement;
+      if (!isDocFs && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        toggleFullscreen();
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isFullscreen, toggleFullscreen]);
+
   // Map viewport control state (Center of NER: 26.2006° N, 92.9376° E)
-  const defaultCenter: [number, number] = [26.2006, 92.9376];
-  const [targetCoords, setTargetCoords] = useState<[number, number]>(defaultCenter);
+  const [targetCoords, setTargetCoords] = useState<[number, number]>(DEFAULT_MAP_CENTER);
   const [targetZoom, setTargetZoom] = useState(7);
   const [triggerCenter, setTriggerCenter] = useState(0);
 
-  // OpenRouteService routing state
-  const [availableRoutes, setAvailableRoutes] = useState<CalculatedRoute[]>([]);
-  const [selectedRouteId, setSelectedRouteId] = useState<string>("route-direct");
+  // Route Alternatives state (POST /routes/alternatives)
+  const [availableRoutes, setAvailableRoutes] = useState<ParsedAlternativeRoute[]>([]);
+  const [selectedRouteId, setSelectedRouteId] = useState<string>("");
+  const [isLoadingRoutes, setIsLoadingRoutes] = useState(true);
+  const [routeError, setRouteError] = useState<string | null>(null);
   const [isRouteCardCollapsed, setIsRouteCardCollapsed] = useState(false);
 
-  // Fetch routes via openrouteservice (with high-precision fallback)
+  // Derive origin and destination coordinates for the active shipment
+  const activeOriginCoordinates: [number, number] = useMemo(() => {
+    if (activeShipment?.originCoordinates && activeShipment.originCoordinates.length === 2) {
+      return activeShipment.originCoordinates;
+    }
+    return [91.7362, 26.1445]; // Default: Guwahati [lng, lat]
+  }, [activeShipment?.originCoordinates]);
+
+  const activeDestinationCoordinates: [number, number] = useMemo(() => {
+    if (activeShipment?.destinationCoordinates && activeShipment.destinationCoordinates.length === 2) {
+      return activeShipment.destinationCoordinates;
+    }
+    return [91.8933, 25.5788]; // Default: Shillong [lng, lat]
+  }, [activeShipment?.destinationCoordinates]);
+
+  // Manual refresh / retry handler for user interaction
+  const fetchRouteAlternatives = useCallback(async () => {
+    setIsLoadingRoutes(true);
+    setRouteError(null);
+    try {
+      const routes = await routeAlternativesApi.fetchParsedAlternatives({
+        origin: { type: "Point", coordinates: activeOriginCoordinates },
+        destination: { type: "Point", coordinates: activeDestinationCoordinates }
+      });
+      if (routes && routes.length > 0) {
+        setAvailableRoutes(routes);
+        setSelectedRouteId((current) => {
+          return routes.some((r) => r.id === current) ? current : routes[0].id;
+        });
+      } else {
+        setRouteError("API returned no alternative routes.");
+      }
+    } catch (err: unknown) {
+      console.error("Failed to load route alternatives:", err);
+      const msg = formatAxiosError(err, "Failed to load route alternatives from backend.");
+      setRouteError(msg);
+    } finally {
+      setIsLoadingRoutes(false);
+    }
+  }, [activeOriginCoordinates, activeDestinationCoordinates]);
+
+  // Dynamically load calculated route for active shipment via backend OpenRouteService
   useEffect(() => {
     let isCancelled = false;
-    async function loadRoutes() {
-      const routes = await calculateRoute(
-        DEFAULT_ENDPOINTS.start,
-        DEFAULT_ENDPOINTS.destination
-      );
-      if (!isCancelled && routes.length > 0) {
-        setAvailableRoutes(routes);
-        setSelectedRouteId(routes[0].id);
-      }
+    setIsLoadingRoutes(true);
+
+    // 1. Check if shipmentStore already has a cached route geometry for this shipment
+    const cachedStoreRoute = storeRoutes.find(
+      (r) =>
+        (activeShipment && r.shipmentId === activeShipment.id) ||
+        (activeShipment && r.id === activeShipment.currentRouteId)
+    );
+
+    if (cachedStoreRoute && cachedStoreRoute.geometry && cachedStoreRoute.geometry.length > 0) {
+      const parsed: ParsedAlternativeRoute = {
+        id: cachedStoreRoute.id,
+        name: cachedStoreRoute.name,
+        isAlternative: false,
+        distanceKm: cachedStoreRoute.distanceKm,
+        durationMinutes: cachedStoreRoute.estimatedMinutes,
+        etaFormatted: `${Math.floor(cachedStoreRoute.estimatedMinutes / 60)}h ${Math.round(cachedStoreRoute.estimatedMinutes % 60)}m`,
+        coordinates: cachedStoreRoute.geometry,
+        rawGeoJsonCoordinates: cachedStoreRoute.geometry.map(([lat, lng]) => [lng, lat]),
+        summary: `${cachedStoreRoute.distanceKm} km corridor connecting ${activeShipment?.origin || "origin"} and ${activeShipment?.destination || "destination"}`,
+        via: cachedStoreRoute.via || `${activeShipment?.origin || "origin"} ➔ ${activeShipment?.destination || "destination"}`
+      };
+      setAvailableRoutes([parsed]);
+      setSelectedRouteId(parsed.id);
+      setIsLoadingRoutes(false);
+      return;
     }
-    loadRoutes();
+
+    // 2. Query backend OpenRouteService alternatives endpoint with GeoJSON [lng, lat]
+    routeAlternativesApi
+      .fetchParsedAlternatives({
+        origin: { type: "Point", coordinates: activeOriginCoordinates },
+        destination: { type: "Point", coordinates: activeDestinationCoordinates }
+      })
+      .then((routes) => {
+        if (!isCancelled && routes && routes.length > 0) {
+          setAvailableRoutes(routes);
+          setSelectedRouteId(routes[0].id);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!isCancelled) {
+          console.error("Failed to load route alternatives:", err);
+          setRouteError(formatAxiosError(err, "Failed to load route alternatives from backend."));
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingRoutes(false);
+        }
+      });
+
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [
+    activeShipment?.id,
+    activeOriginCoordinates,
+    activeDestinationCoordinates,
+    storeRoutes
+  ]);
 
   // Check if NH-6 is currently blocked in simulation
   const nh6Road = roads.find((r) => r.id === "NH-6");
@@ -244,10 +461,10 @@ export const NerGisMap: React.FC = () => {
 
   // Recenter map handlers
   const handleRecenter = useCallback(() => {
-    setTargetCoords(defaultCenter);
+    setTargetCoords(DEFAULT_MAP_CENTER);
     setTargetZoom(7);
     setTriggerCenter((c) => c + 1);
-  }, [defaultCenter]);
+  }, []);
 
   const handleCenterMyLocation = useCallback(() => {
     setTargetCoords([25.7200, 91.8700]);
@@ -296,7 +513,31 @@ export const NerGisMap: React.FC = () => {
   return (
     <div className="flex flex-col gap-3.5 w-full">
       {/* Primary Map Viewport with OpenStreetMap and Leaflet engine */}
-      <div className="relative w-full h-[500px] sm:h-[600px] lg:h-[760px] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-[0_4px_20px_rgba(0,51,86,0.06)] select-none">
+      <div
+        ref={mapWrapperRef}
+        className={`transition-all duration-300 bg-slate-100 select-none overflow-hidden ${
+          isFullscreen
+            ? "fixed inset-0 z-[9999] w-screen h-screen rounded-none border-0 shadow-2xl"
+            : "relative w-full h-[500px] sm:h-[600px] lg:h-[760px] rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,51,86,0.06)]"
+        }`}
+      >
+        {/* Floating Exit Fullscreen Button in Fullscreen Mode */}
+        {isFullscreen && (
+          <div className="absolute top-3.5 right-3.5 z-[1001] pointer-events-auto animate-in fade-in">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/95 backdrop-blur-md text-[#003356] hover:bg-white hover:text-rose-700 font-bold text-xs shadow-[0_4px_16px_rgba(0,51,86,0.18)] border border-slate-200 transition-all cursor-pointer hover:scale-105 active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[18px]">fullscreen_exit</span>
+              <span>Exit Fullscreen</span>
+              <span className="text-[10px] text-slate-500 font-mono px-1.5 py-0.5 bg-slate-100 rounded">
+                Esc
+              </span>
+            </button>
+          </div>
+        )}
+
         {/* Consolidated Unified Floating Control Panel (Active Fleet, At Risk, Blocked, SLA, Search) */}
         <DashboardMapControlPanel
           searchQuery={searchQuery}
@@ -305,7 +546,7 @@ export const NerGisMap: React.FC = () => {
 
         {/* Real Leaflet Map Container */}
         <MapContainer
-          center={defaultCenter}
+          center={DEFAULT_MAP_CENTER}
           zoom={7}
           minZoom={6}
           maxZoom={18}
@@ -323,6 +564,9 @@ export const NerGisMap: React.FC = () => {
             maxZoom={19}
           />
 
+          {/* Dynamic Map Resizer on fullscreen transitions */}
+          <MapResizer isFullscreen={isFullscreen} />
+
           {/* Dynamic Map Controller for flyTo animation */}
           <MapController
             centerCoords={targetCoords}
@@ -330,11 +574,13 @@ export const NerGisMap: React.FC = () => {
             triggerCenter={triggerCenter}
           />
 
-          {/* Minimal Floating Map Controls (+ / − zoom, location, recenter) */}
+          {/* Minimal Floating Map Controls (+ / − zoom, location, recenter, fullscreen) */}
           <FloatingMapControlsInside
             onCenterMyLocation={handleCenterMyLocation}
             onRecenter={handleRecenter}
             isMyLocationActive={!!userGpsLocation?.isLive}
+            onToggleFullscreen={toggleFullscreen}
+            isFullscreen={isFullscreen}
           />
 
           {/* ================= 1. NER ARTERIAL CORRIDORS (POLYLINES) ================= */}
@@ -404,8 +650,17 @@ export const NerGisMap: React.FC = () => {
             );
           })}
 
-          {/* ================= 2. ACTIVE SELECTED ROUTE (OPENROUTESERVICE) ================= */}
-          {activeRoute && (
+          {/* ================= 2. ACTIVE SELECTED ROUTE & ALTERNATIVES (FROM BACKEND API) ================= */}
+          {/* Automatic Bounds Fitter for complete route visibility */}
+          {activeRoute && activeRoute.coordinates.length > 0 && (
+            <RouteBoundsFitter
+              routeCoordinates={activeRoute.coordinates}
+              activeRouteId={activeRoute.id}
+            />
+          )}
+
+          {/* Active Route Polyline */}
+          {activeRoute && activeRoute.coordinates.length > 0 && (
             <>
               {/* Casing / Halo for active route */}
               <Polyline
@@ -413,25 +668,18 @@ export const NerGisMap: React.FC = () => {
                 pathOptions={{
                   color: "#ffffff",
                   weight: 9,
-                  opacity: 0.9,
+                  opacity: 0.95,
                   lineCap: "round",
                   lineJoin: "round"
                 }}
               />
-              {/* Route line */}
+              {/* Active Route Colored Line */}
               <Polyline
                 positions={activeRoute.coordinates}
                 pathOptions={{
-                  color:
-                    isNh6Blocked && activeRoute.id === "route-direct"
-                      ? "#dc2626"
-                      : "#0284c7",
+                  color: "#005148",
                   weight: 6,
                   opacity: 0.95,
-                  dashArray:
-                    isNh6Blocked && activeRoute.id === "route-direct"
-                      ? "6, 6"
-                      : undefined,
                   lineCap: "round",
                   lineJoin: "round"
                 }}
@@ -440,17 +688,30 @@ export const NerGisMap: React.FC = () => {
                   <div className="font-sans text-xs">
                     <strong className="font-bold text-[#003356]">{activeRoute.name}</strong>
                     <div className="text-[11px] text-slate-600">
-                      Distance: {activeRoute.distanceKm} km • ETA: {activeRoute.etaFormatted}
+                      Distance: {activeRoute.distanceKm} km • Duration: {activeRoute.etaFormatted}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      {activeRoute.coordinates.length} waypoints (GeoJSON converted to Leaflet)
                     </div>
                   </div>
                 </Tooltip>
+                <Popup>
+                  <div className="p-3 font-sans min-w-[220px]">
+                    <span className="text-xs font-bold text-[#003356]">{activeRoute.name}</span>
+                    <p className="text-[11px] text-slate-600 mt-1">{activeRoute.summary}</p>
+                    <div className="mt-2 pt-2 border-t border-slate-100 grid grid-cols-2 gap-1 text-[11px]">
+                      <div>Distance: <strong>{activeRoute.distanceKm} km</strong></div>
+                      <div>Duration: <strong>{activeRoute.etaFormatted}</strong></div>
+                    </div>
+                  </div>
+                </Popup>
               </Polyline>
             </>
           )}
 
-          {/* Inactive Alternative Route Polyline (dashed gray) */}
+          {/* Inactive Alternative Route Polylines (Dashed lines, click to select) */}
           {availableRoutes.map((r) => {
-            if (r.id === selectedRouteId) return null;
+            if (r.id === selectedRouteId || r.coordinates.length === 0) return null;
             return (
               <Polyline
                 key={`alt-${r.id}`}
@@ -462,7 +723,7 @@ export const NerGisMap: React.FC = () => {
                   color: "#64748b",
                   weight: 4,
                   dashArray: "8, 6",
-                  opacity: 0.65,
+                  opacity: 0.75,
                   lineCap: "round"
                 }}
               >
@@ -478,47 +739,112 @@ export const NerGisMap: React.FC = () => {
             );
           })}
 
-          {/* Route Start Point Marker (Guwahati Depot) */}
+          {/* Dynamic Origin Marker */}
           <Marker
-            position={[DEFAULT_ENDPOINTS.start.lat, DEFAULT_ENDPOINTS.start.lng]}
-            icon={createEndpointIcon("Start: Guwahati Depot", true)}
+            position={
+              activeRoute && activeRoute.coordinates.length > 0
+                ? activeRoute.coordinates[0]
+                : [activeOriginCoordinates[1], activeOriginCoordinates[0]]
+            }
+            icon={createEndpointIcon(`Origin: ${activeShipment?.origin || "Guwahati"}`, true)}
           >
             <Popup>
-              <div className="p-2.5 font-sans min-w-[200px]">
+              <div className="p-2.5 font-sans min-w-[220px]">
                 <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs mb-1">
                   <span className="material-symbols-outlined text-[16px]">warehouse</span>
-                  <span>Origin: Guwahati Central Depot</span>
+                  <span>Origin: {activeShipment?.origin || "Guwahati Central Depot"}</span>
                 </div>
                 <p className="text-[11px] text-slate-600">
-                  Fleet staging hub for Assam-Meghalaya arterial distribution.
+                  Consignment departure node at [{activeOriginCoordinates[0].toFixed(4)}, {activeOriginCoordinates[1].toFixed(4)}].
                 </p>
-                <div className="text-[10px] font-mono text-slate-400 mt-1">
-                  {DEFAULT_ENDPOINTS.start.lat.toFixed(4)}° N, {DEFAULT_ENDPOINTS.start.lng.toFixed(4)}° E
-                </div>
+                {activeShipment && (
+                  <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-col gap-0.5 text-[10px] text-slate-500">
+                    <div>Consignment: <strong className="font-mono text-slate-700">{activeShipment.id}</strong></div>
+                    <div>Driver: <strong className="text-slate-700">{activeShipment.driverName || "Official Driver"}</strong></div>
+                  </div>
+                )}
               </div>
             </Popup>
           </Marker>
 
-          {/* Route Destination Point Marker (Shillong Medical Node) */}
+          {/* Dynamic Destination Marker */}
           <Marker
-            position={[DEFAULT_ENDPOINTS.destination.lat, DEFAULT_ENDPOINTS.destination.lng]}
-            icon={createEndpointIcon("Destination: Shillong", false)}
+            position={
+              activeRoute && activeRoute.coordinates.length > 0
+                ? activeRoute.coordinates[activeRoute.coordinates.length - 1]
+                : [activeDestinationCoordinates[1], activeDestinationCoordinates[0]]
+            }
+            icon={createEndpointIcon(`Destination: ${activeShipment?.destination || "Shillong"}`, false)}
           >
             <Popup>
-              <div className="p-2.5 font-sans min-w-[200px]">
+              <div className="p-2.5 font-sans min-w-[220px]">
                 <div className="flex items-center gap-1.5 text-[#003356] font-bold text-xs mb-1">
-                  <span className="material-symbols-outlined text-[16px]">local_hospital</span>
-                  <span>Destination: Shillong Medical Logistics Node</span>
+                  <span className="material-symbols-outlined text-[16px]">pin_drop</span>
+                  <span>Destination: {activeShipment?.destination || "Shillong Terminal"}</span>
                 </div>
                 <p className="text-[11px] text-slate-600">
-                  Critical medical supply consignment terminal.
+                  Consignment terminal at [{activeDestinationCoordinates[0].toFixed(4)}, {activeDestinationCoordinates[1].toFixed(4)}].
                 </p>
-                <div className="text-[10px] font-mono text-slate-400 mt-1">
-                  {DEFAULT_ENDPOINTS.destination.lat.toFixed(4)}° N, {DEFAULT_ENDPOINTS.destination.lng.toFixed(4)}° E
-                </div>
+                {activeRoute && (
+                  <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600 font-semibold">
+                    <span>Distance: {activeRoute.distanceKm} km</span>
+                    <span>ETA: {activeRoute.etaFormatted}</span>
+                  </div>
+                )}
               </div>
             </Popup>
           </Marker>
+
+          {/* Assigned Driver / Vehicle on Route Marker */}
+          {activeShipment && activeShipment.driverName && (
+            <Marker
+              position={
+                activeRoute && activeRoute.coordinates.length > 2
+                  ? activeRoute.coordinates[Math.floor(activeRoute.coordinates.length * 0.25)]
+                  : [activeOriginCoordinates[1], activeOriginCoordinates[0]]
+              }
+              icon={createVehicleIcon(activeShipment.vehicleNumber || activeShipment.vehicleId || "FW-18", false)}
+            >
+              <Popup>
+                <div className="p-3 font-sans min-w-[230px]">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="font-bold text-xs text-[#003356] font-mono">
+                      {activeShipment.vehicleNumber || activeShipment.vehicleId}
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase">
+                      Assigned Driver
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5 my-2">
+                    {activeShipment.driverPhotoUrl ? (
+                      <img
+                        src={activeShipment.driverPhotoUrl}
+                        alt={activeShipment.driverName}
+                        className="w-10 h-10 rounded-full object-cover border-2 border-[#003356]"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-[#003356] text-white flex items-center justify-center font-bold text-xs">
+                        {activeShipment.driverName[0]}
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-xs font-bold text-slate-800">{activeShipment.driverName}</div>
+                      <div className="text-[11px] text-[#174a73] font-semibold">{activeShipment.driverPhone || "+91 94361 78921"}</div>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 flex flex-col gap-1 text-[11px] text-slate-600">
+                    <div>Consignment: <strong className="text-slate-800">{activeShipment.id}</strong></div>
+                    <div>Corridor: <strong>{activeShipment.origin} ➔ {activeShipment.destination}</strong></div>
+                    {activeRoute && (
+                      <div className="text-emerald-700 font-semibold">
+                        Distance: {activeRoute.distanceKm} km • ETA: {activeRoute.etaFormatted}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
 
           {/* ================= 3. VEHICLE MARKERS ================= */}
           {vehicles.map((v) => {
@@ -614,77 +940,117 @@ export const NerGisMap: React.FC = () => {
           )}
         </MapContainer>
 
-        {/* ================= 6. FLOATING ROUTE SELECTION & ETA OVERLAY CARD ================= */}
+        {/* Loading State Pill */}
+        {isLoadingRoutes && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-slate-200/80 flex items-center gap-2 text-xs font-semibold text-[#003356] pointer-events-none animate-in fade-in duration-150">
+            <span className="w-3.5 h-3.5 border-2 border-[#003356] border-t-transparent rounded-full animate-spin" />
+            <span>Calculating Route Alternatives...</span>
+          </div>
+        )}
+
+        {/* Error State Banner */}
+        {routeError && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000] max-w-md w-[calc(100%-2rem)] bg-rose-50/95 backdrop-blur-md border border-rose-200 text-rose-900 px-3.5 py-2.5 rounded-xl shadow-lg flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="material-symbols-outlined text-[18px] text-rose-600 shrink-0">error</span>
+              <span className="truncate">{routeError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={fetchRouteAlternatives}
+              className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold shrink-0 transition-colors cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* ================= 6. FLOATING ROUTE SELECTION & ALTERNATIVES OVERLAY CARD ================= */}
         {activeRoute && (
           <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 z-[1000] pointer-events-auto max-w-sm sm:max-w-md w-[calc(100%-1.5rem)] sm:w-auto">
             <div className="map-floating-element bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_4px_20px_rgba(0,51,86,0.12)] border border-slate-200/80 overflow-hidden select-none transition-all duration-200">
-              {/* Header Bar with Minimize/Expand Toggle */}
+              {/* Header Bar with Minimize/Expand Toggle & Refresh Button */}
               <div className="px-3.5 py-2.5 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="p-1 rounded-lg bg-[#0284c7]/10 text-[#0284c7] flex items-center justify-center">
+                  <span className="p-1 rounded-lg bg-[#005148]/10 text-[#005148] flex items-center justify-center">
                     <span className="material-symbols-outlined text-[16px]">alt_route</span>
                   </span>
                   <div className="flex flex-col min-w-0">
                     <span className="text-xs font-bold text-[#003356] truncate">
-                      Guwahati ➔ Shillong Dispatch
+                      Guwahati ➔ Itanagar Corridor
                     </span>
-                    <span className="text-[10px] text-slate-500 truncate">
-                      OpenRouteService Active Geometry
+                    <span className="text-[10px] text-slate-500 truncate flex items-center gap-1">
+                      <span>Dynamic Route Engine</span>
+                      <span>•</span>
+                      <span className="font-mono text-emerald-700 font-semibold">{activeRoute.coordinates.length} waypoints</span>
                     </span>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsRouteCardCollapsed(!isRouteCardCollapsed)}
-                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer shrink-0"
-                  title={isRouteCardCollapsed ? "Expand route panel" : "Collapse route panel"}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {isRouteCardCollapsed ? "expand_less" : "expand_more"}
-                  </span>
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={fetchRouteAlternatives}
+                    disabled={isLoadingRoutes}
+                    className="p-1 text-slate-400 hover:text-[#003356] hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    title="Refresh route alternatives from API"
+                  >
+                    <span className={`material-symbols-outlined text-[17px] ${isLoadingRoutes ? "animate-spin" : ""}`}>
+                      refresh
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsRouteCardCollapsed(!isRouteCardCollapsed)}
+                    className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
+                    title={isRouteCardCollapsed ? "Expand route panel" : "Collapse route panel"}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {isRouteCardCollapsed ? "expand_less" : "expand_more"}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {/* Body */}
               {!isRouteCardCollapsed && (
                 <div className="p-3 flex flex-col gap-2.5">
-                  {/* Route Selection Tabs (Route A vs Alternative Route B) */}
-                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100/90 rounded-xl">
-                    {availableRoutes.map((r) => {
-                      const isSelected = r.id === selectedRouteId;
-                      const isFlooded = isNh6Blocked && r.id === "route-direct";
-
-                      return (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => setSelectedRouteId(r.id)}
-                          className={`px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer flex flex-col gap-0.5 ${
-                            isSelected
-                              ? "bg-white text-[#003356] shadow-xs font-semibold ring-1 ring-slate-200/80"
-                              : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[11px] font-bold truncate">
-                              {r.id === "route-direct" ? "Route A (Direct)" : "Route B (Bypass)"}
+                  {/* Route Selection Tabs / Alternatives (Requirement 6) */}
+                  {availableRoutes.length > 1 ? (
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100/90 rounded-xl">
+                      {availableRoutes.map((r) => {
+                        const isSelected = r.id === selectedRouteId;
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => setSelectedRouteId(r.id)}
+                            className={`px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer flex flex-col gap-0.5 ${
+                              isSelected
+                                ? "bg-white text-[#003356] shadow-xs font-semibold ring-1 ring-slate-200/80"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-[11px] font-bold truncate">{r.name}</span>
+                              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#005148] shrink-0" />}
+                            </div>
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              {r.distanceKm} km • {r.etaFormatted}
                             </span>
-                            {isFlooded ? (
-                              <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[9px] font-bold shrink-0">
-                                Cutoff
-                              </span>
-                            ) : isSelected ? (
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#0284c7] shrink-0" />
-                            ) : null}
-                          </div>
-                          <span className="text-[10px] text-slate-500 font-medium">
-                            {r.distanceKm} km • {r.etaFormatted}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-emerald-50/80 border border-emerald-200/70 rounded-xl flex items-center justify-between text-xs">
+                      <span className="font-semibold text-emerald-900">{activeRoute.name}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                        Active Route
+                      </span>
+                    </div>
+                  )}
 
                   {/* Active Route Specs Ribbon */}
                   <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
@@ -694,24 +1060,23 @@ export const NerGisMap: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-700">
                       <span className="material-symbols-outlined text-[16px] text-slate-400">schedule</span>
-                      <span>ETA: <strong className="font-semibold text-slate-900">{activeRoute.etaFormatted}</strong></span>
+                      <span>Duration: <strong className="font-semibold text-slate-900">{activeRoute.etaFormatted}</strong></span>
                     </div>
                   </div>
 
-                  {/* Weather / Risk Advisory Banner */}
-                  {isNh6Blocked ? (
-                    <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2">
-                      <span className="material-symbols-outlined text-[17px] text-rose-600 shrink-0 mt-0.5">flood</span>
-                      <div className="flex-1 text-[11px] leading-tight">
-                        <strong>NH-6 Inundated at KM 48 Nongpoh.</strong> Direct route cut. Route B (Jowai Bypass) recommended (+45 min).
-                      </div>
+                  {/* Route Origin & Destination Geocodes (Requirement 15 ready) */}
+                  <div className="text-[11px] text-slate-600 flex flex-col gap-1 px-1 pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+                      <span className="font-semibold text-slate-800">Origin:</span>
+                      <span className="text-slate-600 truncate">Guwahati [91.7362, 26.1445]</span>
                     </div>
-                  ) : (
-                    <div className="p-2 rounded-xl bg-emerald-50/80 border border-emerald-200/70 text-emerald-900 text-[11px] flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[16px] text-emerald-600">verified</span>
-                      <span>Corridor cleared. Optimal transit via NH-6 4-lane expressway.</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#003356] shrink-0" />
+                      <span className="font-semibold text-slate-800">Destination:</span>
+                      <span className="text-slate-600 truncate">Itanagar [93.6167, 27.0844]</span>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>

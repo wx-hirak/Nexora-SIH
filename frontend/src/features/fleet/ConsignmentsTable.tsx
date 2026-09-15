@@ -1,7 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { useShipmentStore } from "@/stores/shipmentStore";
+import { initialShipments } from "@/services/mock/seedData";
 
-export const ConsignmentsTable: React.FC = () => {
+interface ConsignmentsTableProps {
+  onOpenCreateModal?: () => void;
+}
+
+export const ConsignmentsTable: React.FC<ConsignmentsTableProps> = ({ onOpenCreateModal }) => {
   const shipments = useShipmentStore((s) => s.shipments);
   const selectedShipmentId = useShipmentStore((s) => s.selectedShipmentId);
   const selectShipment = useShipmentStore((s) => s.selectShipment);
@@ -10,13 +15,16 @@ export const ConsignmentsTable: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
+  const effectiveShipments = shipments.length > 0 ? shipments : initialShipments;
+
   const filteredShipments = useMemo(() => {
-    return shipments.filter((s) => {
+    return effectiveShipments.filter((s) => {
       const matchesSearch =
         s.id.toLowerCase().includes(search.toLowerCase()) ||
         s.commodity.toLowerCase().includes(search.toLowerCase()) ||
         s.origin.toLowerCase().includes(search.toLowerCase()) ||
-        s.destination.toLowerCase().includes(search.toLowerCase());
+        s.destination.toLowerCase().includes(search.toLowerCase()) ||
+        (s.driverName && s.driverName.toLowerCase().includes(search.toLowerCase()));
 
       const matchesPriority =
         priorityFilter === "ALL" || s.priority.toString() === priorityFilter;
@@ -26,7 +34,7 @@ export const ConsignmentsTable: React.FC = () => {
 
       return matchesSearch && matchesPriority && matchesStatus;
     });
-  }, [shipments, search, priorityFilter, statusFilter]);
+  }, [effectiveShipments, search, priorityFilter, statusFilter]);
 
   return (
     <div className="flex-1 min-w-0 flex flex-col gap-4">
@@ -40,7 +48,7 @@ export const ConsignmentsTable: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search consignment, commodity, city..."
+            placeholder="Search consignment, driver, city..."
             className="w-full h-10 pl-9 pr-3 rounded-lg bg-[#f1f4fa] text-[#181c20] text-xs placeholder:text-[#72777f] border border-transparent focus:border-[#174a73] focus:bg-white focus:outline-none"
           />
         </div>
@@ -82,6 +90,17 @@ export const ConsignmentsTable: React.FC = () => {
           >
             <span className="material-symbols-outlined text-[18px]">refresh</span>
           </button>
+
+          {onOpenCreateModal && (
+            <button
+              type="button"
+              onClick={onOpenCreateModal}
+              className="h-10 px-3.5 rounded-lg bg-[#003356] hover:bg-[#174a73] text-white text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[17px]">add_circle</span>
+              <span>New Shipment</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -125,6 +144,23 @@ export const ConsignmentsTable: React.FC = () => {
                   <p className="text-[11px] text-slate-500">
                     {shp.origin} ➔ {shp.destination}
                   </p>
+                  {shp.driverName && (
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-700">
+                      {shp.driverPhotoUrl ? (
+                        <img
+                          src={shp.driverPhotoUrl}
+                          alt={shp.driverName}
+                          className="w-4 h-4 rounded-full object-cover border border-[#003356]/20 shrink-0"
+                        />
+                      ) : (
+                        <span className="material-symbols-outlined text-[13px] text-[#27638c]">person</span>
+                      )}
+                      <span className="font-semibold text-[#003356]">{shp.driverName}</span>
+                      {shp.vehicleNumber && (
+                        <span className="text-[10px] text-slate-500 font-mono">({shp.vehicleNumber})</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <span
@@ -192,6 +228,23 @@ export const ConsignmentsTable: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-[#003356]">{shp.id}</span>
                       </div>
+                      {shp.driverName && (
+                        <div className="flex items-center gap-1.5 mt-1 text-[11px] text-[#42474e]">
+                          {shp.driverPhotoUrl ? (
+                            <img
+                              src={shp.driverPhotoUrl}
+                              alt={shp.driverName}
+                              className="w-4 h-4 rounded-full object-cover border border-[#003356]/20 shrink-0"
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined text-[13px] text-[#27638c]">person</span>
+                          )}
+                          <span className="font-medium text-[#003356]">{shp.driverName}</span>
+                          {shp.vehicleNumber && (
+                            <span className="text-[10px] text-slate-500 font-mono">({shp.vehicleNumber})</span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-[#181c20]">{shp.commodity}</div>

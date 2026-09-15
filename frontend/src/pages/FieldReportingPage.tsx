@@ -8,6 +8,7 @@ import type { Severity } from "@/types/domain";
 
 export const FieldReportingPage: React.FC = () => {
   const incidents = useIncidentStore((s) => s.incidents);
+  const addIncident = useIncidentStore((s) => s.addIncident);
   const roads = useRoadStore((s) => s.roads);
   const { provider } = useDataProvider();
 
@@ -38,12 +39,14 @@ export const FieldReportingPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOfflineSimulated, setIsOfflineSimulated] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
       const selectedRoad = roads.find((r) => r.id === affectedRoadId);
       const inc = await provider.submitIncident({
@@ -63,10 +66,13 @@ export const FieldReportingPage: React.FC = () => {
         impact: `Live field report at ${readableLocation}. GPS accuracy ±${coords.accuracy}m.`
       });
 
+      // Synchronize immediately with local domain store (architecture.md §3)
+      addIncident(inc);
+
       setSuccessNotice(
         `Report ${inc.id} submitted! Status: ${
           inc.syncStatus === "pending_sync"
-            ? "Stored locally (Pending Sync)"
+            ? "Stored locally (Pending Sync — backend unreachable)"
             : "Synced with Regional Command Center"
         }`
       );
@@ -75,8 +81,11 @@ export const FieldReportingPage: React.FC = () => {
       setDescription("");
       setPhotoPreview(null);
       setIsCameraActive(false);
-    } catch (e) {
-      console.error(e);
+    } catch (e: unknown) {
+      console.error("Field reporting submission error:", e);
+      const msg = e instanceof Error ? e.message : "Failed to submit field incident report";
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setIsSubmitting(false);
     }
@@ -104,6 +113,13 @@ export const FieldReportingPage: React.FC = () => {
         <div className="p-4 rounded-xl bg-[#e6f4ea] border border-[#34a853]/40 text-[#137333] text-xs font-semibold flex items-center gap-2 shadow-xs">
           <span className="material-symbols-outlined text-[20px]">check_circle</span>
           <span>{successNotice}</span>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="p-4 rounded-xl bg-[#ffdad6] border border-[#ba1a1a]/30 text-[#93000a] text-xs font-semibold flex items-center gap-2 shadow-xs">
+          <span className="material-symbols-outlined text-[20px]">error</span>
+          <span>Submission Error: {errorMessage}</span>
         </div>
       )}
 

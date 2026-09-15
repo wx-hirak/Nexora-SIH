@@ -65,6 +65,21 @@ export interface Incident {
 
 export type NewIncidentInput = Omit<Incident, "id" | "createdAt" | "status" | "syncStatus">;
 
+export interface DriverProfile {
+  id: string;
+  name: string;
+  phone: string;
+  photoUrl: string;
+  vehicleId: string;
+  vehicleNumber: string;
+  vehicleType: string;
+  status: "available" | "in_transit" | "standby";
+  rating?: number;
+  experienceYears?: number;
+  backendId?: string;
+  backendVehicleId?: string;
+}
+
 export interface Shipment {
   id: string;
   origin: string;
@@ -77,6 +92,21 @@ export interface Shipment {
   status: "on_time" | "at_risk" | "delayed" | "delivered";
   currentRouteId: string;
   riskScore: number;
+  driverId?: string;
+  driverName?: string;
+  driverPhone?: string;
+  driverPhotoUrl?: string;
+  vehicleNumber?: string;
+  vehicleType?: string;
+  pickupTimeIso?: string;
+  expectedDeliveryIso?: string;
+  receiverContact?: string;
+  specialInstructions?: string;
+  originCoordinates?: [number, number]; // [longitude, latitude] GeoJSON
+  destinationCoordinates?: [number, number]; // [longitude, latitude] GeoJSON
+  trackingNumber?: string;
+  weightKg?: number;
+  rawBackendId?: string;
 }
 
 export interface RouteOption {

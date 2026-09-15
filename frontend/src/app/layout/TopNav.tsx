@@ -5,6 +5,7 @@ import { DataSourceBadge } from "@/components/DataSourceBadge";
 import { useAlertStore } from "@/stores/alertStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useAuthStore } from "@/stores/authStore";
+import { authApi } from "@/services/api/apiClient";
 import { useDemoScenario } from "@/hooks/useDemoScenario";
 
 export const TopNav: React.FC = () => {
@@ -20,6 +21,7 @@ export const TopNav: React.FC = () => {
   const { demoStatus, runRainfallScenario, resetScenario } = useDemoScenario();
 
   const handleLogout = () => {
+    authApi.logout().catch(() => {});
     logout();
     navigate("/login");
   };
