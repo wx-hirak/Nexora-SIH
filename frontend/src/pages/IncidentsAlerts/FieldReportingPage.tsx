@@ -3,7 +3,7 @@ import { useIncidentStore } from "@/stores/incidentStore";
 import { useDataProvider } from "@/app/providers/DataProviderContext";
 import { useRoadStore } from "@/stores/roadStore";
 import { useLiveLocation } from "@/hooks/useLiveLocation";
-import { LiveCameraCapture } from "@/components/LiveCameraCapture";
+import { LiveCameraCapture } from "@/features/incidents/LiveCameraCapture";
 import type { Severity } from "@/types/domain";
 
 export const FieldReportingPage: React.FC = () => {
