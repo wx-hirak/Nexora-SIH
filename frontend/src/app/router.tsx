@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { ProtectedRoute, PublicOnlyRoute, RoleSelectionRoute } from "./router/RouteGuards";
+import { ProtectedRoute, PublicOnlyRoute } from "./router/RouteGuards";
 import { DashboardPage } from "@/pages/Dashboard/DashboardPage";
 import { FleetPage } from "@/pages/Fleet/FleetPage";
 import { DeliveriesPage } from "@/pages/Fleet/DeliveriesPage";
@@ -9,7 +9,6 @@ import { AnalyticsPage } from "@/pages/Analytics/AnalyticsPage";
 import { FieldReportingPage } from "@/pages/IncidentsAlerts/FieldReportingPage";
 import { LoginPage } from "@/pages/Login/LoginPage";
 import { SettingsPage } from "@/pages/Settings/SettingsPage";
-import { RoleVehicleSelectionPage } from "@/pages/RoleVehicleSelectionPage";
 
 export const router = createBrowserRouter([
   {
@@ -22,11 +21,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/role-selection",
-    element: (
-      <RoleSelectionRoute>
-        <RoleVehicleSelectionPage />
-      </RoleSelectionRoute>
-    )
+    element: <Navigate to="/settings" replace />
   },
   {
     path: "/",
