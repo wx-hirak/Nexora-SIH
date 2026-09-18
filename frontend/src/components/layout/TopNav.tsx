@@ -124,9 +124,9 @@ export const TopNav: React.FC = () => {
 
           {/* User Profile */}
           <Link
-            to="/role-selection"
+            to="/settings"
             className="flex items-center gap-2 pl-2 border-l border-[#e5e8ee] hover:opacity-85 transition-opacity"
-            title="Configure role or vehicle profile"
+            title="Operational settings and profile"
           >
             <div className="w-8 h-8 rounded-full bg-[#003356] flex items-center justify-center text-white shadow-xs font-semibold text-xs">
               {authUser?.role ? authUser.role[0].toUpperCase() : "U"}
