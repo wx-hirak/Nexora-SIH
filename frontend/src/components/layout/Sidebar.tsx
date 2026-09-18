@@ -32,8 +32,7 @@ export const Sidebar: React.FC = () => {
     },
     { to: "/analytics", label: "Risk Analytics", icon: "analytics" },
     { to: "/field", label: "Field Reporting", icon: "campaign" },
-    { to: "/settings", label: "Settings", icon: "settings" },
-    { to: "/role-selection", label: "Role & Vehicle Setup", icon: "tune" }
+    { to: "/settings", label: "Settings", icon: "settings" }
   ];
 
   const handleLogout = () => {
