@@ -260,6 +260,7 @@ export interface CreateShipmentInput {
   routeId?: string;
   driverName?: string;
   driverPhone?: string;
+  driverLicenseId?: string;
   driverPhotoUrl?: string;
   vehicleNumber?: string;
   vehicleType?: string;
@@ -268,6 +269,7 @@ export interface CreateShipmentInput {
   receiverContact?: string;
   specialInstructions?: string;
   image?: Blob | File;
+  driverPhoto?: Blob | File;
   route?: {
     distanceKm: number;
     durationMinutes: number;
@@ -445,15 +447,18 @@ export const shipmentApi = {
     // 2. Prepare FormData payload with image file / blob (required <= 45 KB)
     const formData = new FormData();
 
-    if (input.image && input.image instanceof Blob) {
-      const fileName = (input.image as File).name || "consignment.jpg";
-      formData.append("image", input.image, fileName);
+    const photoBlob = input.driverPhoto || input.image;
+    if (photoBlob && photoBlob instanceof Blob) {
+      const fileName = (photoBlob as File).name || "driver_photo.jpg";
+      formData.append("driverPhoto", photoBlob, fileName);
+      formData.append("image", photoBlob, fileName);
     } else {
       // 1x1 transparent pixel fallback if no image attached
       const transparentPixel =
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA=";
       try {
         const pixelBlob = await fetch(transparentPixel).then((r) => r.blob());
+        formData.append("driverPhoto", pixelBlob, "driver_photo.png");
         formData.append("image", pixelBlob, "consignment.png");
       } catch {
         // Fallback
@@ -476,6 +481,15 @@ export const shipmentApi = {
     }
     if (input.driverId) {
       formData.append("driverId", input.driverId);
+    }
+    if (input.driverName) {
+      formData.append("driverName", input.driverName);
+    }
+    if (input.driverPhone) {
+      formData.append("driverPhone", input.driverPhone);
+    }
+    if (input.driverLicenseId) {
+      formData.append("driverLicenseId", input.driverLicenseId);
     }
 
     // 3. Dispatch to POST /shipments/create (with adaptive fallback to /shipments/creat and /api/shipments/create)

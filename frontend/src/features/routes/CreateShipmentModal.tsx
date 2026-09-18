@@ -18,10 +18,10 @@ import {
 } from "@/services/mock/driversData";
 import {
   compressImageFile,
-  generateSampleConsignmentImage,
+  generateSampleDriverPhoto,
   type CompressedImageResult
 } from "./imageCompression";
-import type { DriverProfile, RouteOption } from "@/types/domain";
+import type { RouteOption } from "@/types/domain";
 
 interface CreateShipmentModalProps {
   isOpen: boolean;
@@ -60,8 +60,12 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
   const [destinationSuggestionsOpen, setDestinationSuggestionsOpen] = useState(false);
   const destinationWrapperRef = useRef<HTMLDivElement>(null);
 
-  // Driver & Vehicle selections
-  const [selectedDriverId, setSelectedDriverId] = useState(registeredDrivers[0].id);
+  // Driver Details (Manual Entry)
+  const [driverName, setDriverName] = useState("T. Sangma");
+  const [driverPhone, setDriverPhone] = useState("+91 94361 78921");
+  const [driverLicenseId, setDriverLicenseId] = useState("DL-01-2024-8841");
+
+  // Vehicle selection
   const [selectedVehicleId, setSelectedVehicleId] = useState(
     registeredDrivers[0].backendVehicleId || registeredDrivers[0].vehicleId
   );
@@ -96,8 +100,6 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [callNotice, setCallNotice] = useState<string | null>(null);
-  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -115,23 +117,10 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentDriver: DriverProfile =
-    registeredDrivers.find((d) => d.id === selectedDriverId) || registeredDrivers[0];
-
-  const handleDriverChange = (driverId: string) => {
-    setSelectedDriverId(driverId);
-    const drv = registeredDrivers.find((d) => d.id === driverId);
-    if (drv) {
-      setSelectedVehicleId(drv.backendVehicleId || drv.vehicleId);
-    }
-  };
-
-  const handleCallDriver = () => {
-    setCallNotice(`Connecting satellite dispatch line to ${currentDriver.name} (${currentDriver.phone})...`);
-    setTimeout(() => {
-      setCallNotice(null);
-    }, 4000);
-  };
+  const selectedVehicleInfo =
+    registeredDrivers.find(
+      (d) => (d.backendVehicleId || d.vehicleId) === selectedVehicleId
+    ) || registeredDrivers[0];
 
   // Image processing with automatic compression to <= 45 KB
   const processImageFile = async (file: File) => {
@@ -169,10 +158,10 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
     setImageError(null);
     setIsCompressingImage(true);
     try {
-      const sample = await generateSampleConsignmentImage(shipmentId);
+      const sample = await generateSampleDriverPhoto(driverName, driverLicenseId);
       setSelectedImage(sample);
     } catch {
-      setImageError("Could not generate sample consignment image.");
+      setImageError("Could not generate sample driver photo.");
     } finally {
       setIsCompressingImage(false);
     }
@@ -253,13 +242,27 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
 
     // 1. Validate Image (Required, max 45 KB)
     if (!selectedImage) {
-      setImageError("Cargo proof image is required before creation (maximum 45 KB).");
-      setSubmissionError("Please upload or generate a consignment image before submitting.");
+      setImageError("Driver photo is required before creation (maximum 45 KB).");
+      setSubmissionError("Please upload or generate a driver photo before submitting.");
       return;
     }
     if (selectedImage.sizeBytes > 45 * 1024) {
-      setImageError(`Image size (${selectedImage.sizeKb} KB) exceeds the strict 45 KB maximum limit.`);
-      setSubmissionError("Image size must not exceed 45 KB.");
+      setImageError(`Driver photo size (${selectedImage.sizeKb} KB) exceeds the strict 45 KB maximum limit.`);
+      setSubmissionError("Driver photo size must not exceed 45 KB.");
+      return;
+    }
+
+    // 1b. Validate manual driver details
+    if (!driverName.trim()) {
+      setSubmissionError("Please enter driver name.");
+      return;
+    }
+    if (!driverPhone.trim()) {
+      setSubmissionError("Please enter driver phone number.");
+      return;
+    }
+    if (!driverLicenseId.trim()) {
+      setSubmissionError("Please enter driver license or ID.");
       return;
     }
 
@@ -299,9 +302,9 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
         console.warn("Backend OpenRouteService calculation encountered an issue:", err);
       }
 
-      // 4. Use real backend driverId and vehicleId (valid 24-character ObjectIds)
-      const targetDriverId = currentDriver.backendId || "6a9a3c1010f836940a45ab2a";
-      const targetVehicleId = currentDriver.backendVehicleId || selectedVehicleId || "6a9a3b6510f836940a45ab23";
+      // 4. Vehicle & Driver IDs
+      const targetDriverId = "6a9a3c1010f836940a45ab2a";
+      const targetVehicleId = selectedVehicleInfo.backendVehicleId || selectedVehicleId || "6a9a3b6510f836940a45ab23";
       const targetRouteId = orsRoute?.id || `ROUTE-${shipmentId}`;
 
       // 5. Dispatch shipment creation to backend endpoint with all required fields
@@ -316,11 +319,13 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
         driverId: targetDriverId,
         routeId: targetRouteId,
         image: selectedImage.file || selectedImage.blob,
-        driverName: currentDriver.name,
-        driverPhone: currentDriver.phone,
-        driverPhotoUrl: currentDriver.photoUrl,
-        vehicleNumber: currentDriver.vehicleNumber,
-        vehicleType: currentDriver.vehicleType,
+        driverPhoto: selectedImage.file || selectedImage.blob,
+        driverName: driverName.trim(),
+        driverPhone: driverPhone.trim(),
+        driverLicenseId: driverLicenseId.trim(),
+        driverPhotoUrl: selectedImage.dataUrl,
+        vehicleNumber: selectedVehicleInfo.vehicleNumber,
+        vehicleType: selectedVehicleInfo.vehicleType,
         pickupTimeIso: new Date(pickupTime).toISOString(),
         expectedDeliveryIso: new Date(expectedDelivery).toISOString(),
         receiverContact: `${receiverName} (${receiverFacility}) • ${receiverPhone}`,
@@ -339,6 +344,13 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
       createdShipment.originCoordinates = [originCoords[0], originCoords[1]];
       createdShipment.destinationCoordinates = [destinationCoords[0], destinationCoords[1]];
       createdShipment.id = shipmentId.trim() || createdShipment.id;
+      createdShipment.driverName = driverName.trim();
+      createdShipment.driverPhone = driverPhone.trim();
+      createdShipment.vehicleNumber = selectedVehicleInfo.vehicleNumber;
+      createdShipment.vehicleType = selectedVehicleInfo.vehicleType;
+      if (selectedImage?.dataUrl) {
+        createdShipment.driverPhotoUrl = selectedImage.dataUrl;
+      }
 
       // 6. Build RouteOption for Leaflet map if ORS returned route coordinates
       let newRouteOption: RouteOption | undefined = undefined;
@@ -462,24 +474,6 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
             </div>
           )}
 
-          {/* Direct Call notification banner */}
-          {callNotice && (
-            <div className="p-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-xs flex items-center justify-between gap-3 animate-in fade-in">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-sky-600 animate-pulse">
-                  ring_volume
-                </span>
-                <span>{callNotice}</span>
-              </div>
-              <a
-                href={`tel:${currentDriver.phone.replace(/[^0-9+]/g, "")}`}
-                className="px-2.5 py-1 rounded bg-[#003356] text-white text-[11px] font-bold shrink-0 hover:bg-[#174a73] transition-colors"
-              >
-                Dial Directly
-              </a>
-            </div>
-          )}
-
           {/* Section 1: Consignment ID, Commodity, Weight & Priority */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
             {/* Consignment ID */}
@@ -592,18 +586,9 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
                   placeholder="Type city name (e.g. Guwahati)"
                   className="w-full h-10 px-3 pr-8 rounded-lg bg-white text-xs font-semibold text-[#181c20] border border-[#e5e8ee] focus:border-[#174a73] focus:outline-none"
                 />
-                <span className="absolute right-2.5 top-2.5 material-symbols-outlined text-[18px] text-slate-400 pointer-events-none">
-                  location_on
+                <span className="absolute right-2.5 top-2.5 material-symbols-outlined text-[18px] text-emerald-600 pointer-events-none">
+                  check
                 </span>
-              </div>
-
-              {/* GeoJSON Confirmation Badge */}
-              <div className="flex items-center justify-between text-[11px] px-1">
-                <span className="font-mono text-emerald-700 flex items-center gap-1 text-[10px]">
-                  <span className="material-symbols-outlined text-[13px] text-emerald-600">check_circle</span>
-                  <span>[{originCoords[0].toFixed(4)}, {originCoords[1].toFixed(4)}]</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">[lng, lat]</span>
               </div>
 
               {/* Origin Autocomplete Suggestions */}
@@ -620,8 +605,8 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
                         <strong className="text-slate-800 font-semibold">{loc.name}</strong>
                         <span className="text-[10px] text-slate-500 truncate">{loc.fullName}</span>
                       </div>
-                      <span className="text-[10px] font-mono text-slate-400 shrink-0">
-                        {loc.coordinates[0].toFixed(2)}, {loc.coordinates[1].toFixed(2)}
+                      <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+                        {loc.state}
                       </span>
                     </button>
                   ))}
@@ -649,18 +634,9 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
                   placeholder="Type city name (e.g. Shillong)"
                   className="w-full h-10 px-3 pr-8 rounded-lg bg-white text-xs font-semibold text-[#181c20] border border-[#e5e8ee] focus:border-[#174a73] focus:outline-none"
                 />
-                <span className="absolute right-2.5 top-2.5 material-symbols-outlined text-[18px] text-slate-400 pointer-events-none">
-                  flag
+                <span className="absolute right-2.5 top-2.5 material-symbols-outlined text-[18px] text-emerald-600 pointer-events-none">
+                  check
                 </span>
-              </div>
-
-              {/* GeoJSON Confirmation Badge */}
-              <div className="flex items-center justify-between text-[11px] px-1">
-                <span className="font-mono text-emerald-700 flex items-center gap-1 text-[10px]">
-                  <span className="material-symbols-outlined text-[13px] text-emerald-600">check_circle</span>
-                  <span>[{destinationCoords[0].toFixed(4)}, {destinationCoords[1].toFixed(4)}]</span>
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">[lng, lat]</span>
               </div>
 
               {/* Destination Autocomplete Suggestions */}
@@ -677,8 +653,8 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
                         <strong className="text-slate-800 font-semibold">{loc.name}</strong>
                         <span className="text-[10px] text-slate-500 truncate">{loc.fullName}</span>
                       </div>
-                      <span className="text-[10px] font-mono text-slate-400 shrink-0">
-                        {loc.coordinates[0].toFixed(2)}, {loc.coordinates[1].toFixed(2)}
+                      <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+                        {loc.state}
                       </span>
                     </button>
                   ))}
@@ -687,251 +663,217 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Driver Selection & Rich Driver Details Card */}
-          <div className="flex flex-col gap-2.5 p-4 rounded-xl bg-[#eff6ff]/70 border border-[#cfe4ff]">
+          {/* Section 3: Driver Details (Manual Entry) */}
+          <div className="flex flex-col gap-3 p-4 rounded-xl bg-[#eff6ff]/70 border border-[#cfe4ff]">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-[#003356] flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[17px] text-[#27638c]">badge</span>
-                <span>Select Assigned Driver</span>
+                <span>Driver Details</span>
               </label>
-              <span className="text-[11px] text-[#27638c] font-semibold">
-                {registeredDrivers.length} Certified Regional Drivers
-              </span>
-            </div>
-
-            {/* Driver Selector Dropdown */}
-            <select
-              value={selectedDriverId}
-              onChange={(e) => handleDriverChange(e.target.value)}
-              className="w-full h-10 px-3 rounded-lg bg-white text-xs font-semibold text-[#003356] border border-[#cfe4ff] focus:border-[#174a73] focus:outline-none"
-            >
-              {registeredDrivers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} • {d.vehicleNumber} ({d.vehicleType.split("(")[0].trim()})
-                </option>
-              ))}
-            </select>
-
-            {/* Prominent Driver Profile Card with Photo, Phone & Call Driver action */}
-            <div className="mt-1 p-3 rounded-xl bg-white border border-[#cfe4ff] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
-              <div className="flex items-center gap-3">
-                {/* Driver Profile Photo: small circular profile image with graceful fallback */}
-                <div className="relative shrink-0">
-                  {!imageErrors[currentDriver.id] ? (
-                    <img
-                      src={currentDriver.photoUrl}
-                      alt={currentDriver.name}
-                      onError={() => setImageErrors((prev) => ({ ...prev, [currentDriver.id]: true }))}
-                      className="w-12 h-12 rounded-full object-cover border-2 border-[#003356] shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-[#003356] text-white font-bold text-sm flex items-center justify-center border-2 border-white shadow-xs">
-                      {currentDriver.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </div>
-                  )}
-                  <span
-                    className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white"
-                    title="Driver Active"
-                  />
-                </div>
-
-                {/* Driver Name, Vehicle Number & Vehicle Type */}
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[#003356]">{currentDriver.name}</span>
-                    <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 text-[10px] font-bold">
-                      ★ {currentDriver.rating || 4.9}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs text-[#42474e] mt-0.5">
-                    <span className="font-mono font-semibold text-[#181c20]">
-                      {currentDriver.vehicleNumber}
-                    </span>
-                    <span>•</span>
-                    <span className="text-[11px] text-[#72777f]">{currentDriver.vehicleType}</span>
-                  </div>
-
-                {/* Direct Call notification banner */}
-                <div className="flex items-center gap-1.5 text-xs text-[#174a73] font-semibold mt-1">
-                  <span className="material-symbols-outlined text-[15px] text-[#27638c]">phone_iphone</span>
-                  <span>{currentDriver.phone}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Call Driver Action Button */}
-            <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0">
-              <button
-                type="button"
-                onClick={handleCallDriver}
-                className="flex-1 sm:flex-initial h-9 px-3.5 rounded-lg bg-[#005148] hover:bg-[#003d36] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
-                title={`Call ${currentDriver.name}`}
-              >
-                <span className="material-symbols-outlined text-[17px]">call</span>
-                <span>Call Driver</span>
-              </button>
-
-              <a
-                href={`tel:${currentDriver.phone.replace(/[^0-9+]/g, "")}`}
-                className="h-9 w-9 rounded-lg border border-[#cfe4ff] hover:bg-[#eff6ff] text-[#003356] flex items-center justify-center transition-colors cursor-pointer"
-                title="Direct Phone Call Link"
-              >
-                <span className="material-symbols-outlined text-[17px]">phone_forwarded</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Backend ObjectId Integration Chip */}
-          <div className="flex flex-wrap items-center justify-between gap-1.5 px-2 py-1 bg-white/80 rounded-lg border border-[#cfe4ff]/60 text-[10px] text-[#55606d] font-mono">
-            <span>
-              Driver Backend ID: <strong className="text-[#003356]">{currentDriver.backendId || currentDriver.id}</strong>
-            </span>
-            <span>
-              Vehicle Backend ID: <strong className="text-[#003356]">{currentDriver.backendVehicleId || selectedVehicleId}</strong>
-            </span>
-          </div>
-        </div>
-
-        {/* Section 4: Vehicle Selection Sync */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-[#181c20]">Vehicle Unit Selection</label>
-            <select
-              value={selectedVehicleId}
-              onChange={(e) => setSelectedVehicleId(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl bg-[#f1f4fa] text-xs font-semibold text-[#003356] border border-[#e5e8ee] focus:border-[#174a73] focus:bg-white focus:outline-none"
-            >
-              {registeredDrivers.map((d) => (
-                <option key={d.id} value={d.backendVehicleId || d.vehicleId}>
-                  {d.vehicleNumber} — {d.vehicleType}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-[#181c20]">Transit Fleet Classification</label>
-            <div className="h-10 px-3 rounded-xl bg-[#f1f4fa] flex items-center justify-between text-xs text-[#42474e] border border-[#e5e8ee]">
-              <span className="font-semibold text-[#003356]">{currentDriver.vehicleType}</span>
-              <span className="text-[10px] font-mono text-[#72777f]">{currentDriver.vehicleNumber}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Section: Consignment Package / Cargo Proof Image (Required, max 45 KB) */}
-        <div className="flex flex-col gap-2.5 p-4 rounded-xl bg-[#f8fafc] border border-[#e5e8ee]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <label className="text-xs font-bold text-[#003356] flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[17px] text-[#27638c]">photo_camera</span>
-              <span>Consignment Cargo Proof / Image <span className="text-rose-600 font-bold">*</span></span>
-            </label>
-            <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#cfe4ff] text-[#001d34]">
-                Required • Max 45 KB
+                Manual Entry
               </span>
-              <button
-                type="button"
-                onClick={handleGenerateSampleImage}
-                disabled={isCompressingImage}
-                className="text-[11px] text-[#005148] hover:text-[#003d36] font-bold flex items-center gap-1 cursor-pointer underline disabled:opacity-50"
-                title="Generate verified consignment badge image <= 45 KB"
-              >
-                <span className="material-symbols-outlined text-[14px]">auto_fix_high</span>
-                <span>Use Sample Cargo Photo</span>
-              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Driver Name */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#181c20]">
+                  Driver Name <span className="text-rose-600">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={driverName}
+                    onChange={(e) => setDriverName(e.target.value)}
+                    placeholder="Enter driver name"
+                    className="w-full h-10 px-3 pr-8 rounded-lg bg-white text-xs font-semibold text-[#181c20] border border-[#cfe4ff] focus:border-[#174a73] focus:outline-none"
+                  />
+                  <span className="absolute right-2.5 top-2.5 material-symbols-outlined text-[18px] text-slate-400 pointer-events-none">
+                    person
+                  </span>
+                </div>
+              </div>
+
+              {/* Driver Phone */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#181c20]">
+                  Driver Phone <span className="text-rose-600">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    required
+                    value={driverPhone}
+                    onChange={(e) => setDriverPhone(e.target.value)}
+                    placeholder="Enter phone number"
+                    className="w-full h-10 px-3 pr-8 rounded-lg bg-white text-xs font-semibold text-[#181c20] border border-[#cfe4ff] focus:border-[#174a73] focus:outline-none"
+                  />
+                  <span className="absolute right-2.5 top-2.5 material-symbols-outlined text-[18px] text-slate-400 pointer-events-none">
+                    call
+                  </span>
+                </div>
+              </div>
+
+              {/* Driver License / ID */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#181c20]">
+                  Driver License / ID <span className="text-rose-600">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={driverLicenseId}
+                    onChange={(e) => setDriverLicenseId(e.target.value)}
+                    placeholder="Enter driver license or ID"
+                    className="w-full h-10 px-3 pr-8 rounded-lg bg-white text-xs font-semibold text-[#181c20] border border-[#cfe4ff] focus:border-[#174a73] focus:outline-none"
+                  />
+                  <span className="absolute right-2.5 top-2.5 material-symbols-outlined text-[18px] text-slate-400 pointer-events-none">
+                    badge
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Image Dropzone & Preview */}
-          {!selectedImage ? (
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleImageDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer ${
-                isDragging ? "border-[#003356] bg-[#eff6ff]" : "border-[#c2c7cf] hover:border-[#174a73] bg-white"
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-              <div className="w-10 h-10 rounded-full bg-[#e8f0fe] text-[#003356] flex items-center justify-center shadow-xs">
-                <span className="material-symbols-outlined text-[22px]">cloud_upload</span>
-              </div>
-              <div className="text-xs text-[#181c20]">
-                <span className="font-bold text-[#003356]">Click to upload</span> or drag and drop consignment image
-              </div>
-              <p className="text-[10px] text-[#72777f]">
-                JPG, PNG or WEBP (automatically compressed on client to &le; 45 KB)
-              </p>
-              {isCompressingImage && (
-                <div className="flex items-center gap-2 text-xs text-[#003356] font-semibold mt-1">
-                  <span className="w-3.5 h-3.5 border-2 border-[#003356] border-t-transparent rounded-full animate-spin" />
-                  <span>Compressing image to &le; 45 KB...</span>
-                </div>
-              )}
+          {/* Section 4: Vehicle Selection Sync */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#181c20]">Vehicle Unit Selection</label>
+              <select
+                value={selectedVehicleId}
+                onChange={(e) => setSelectedVehicleId(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl bg-[#f1f4fa] text-xs font-semibold text-[#003356] border border-[#e5e8ee] focus:border-[#174a73] focus:bg-white focus:outline-none"
+              >
+                {registeredDrivers.map((d) => (
+                  <option key={d.id} value={d.backendVehicleId || d.vehicleId}>
+                    {d.vehicleNumber} — {d.vehicleType}
+                  </option>
+                ))}
+              </select>
             </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white border border-[#cfe4ff] shadow-xs">
-              <div className="flex items-center gap-3">
-                <img
-                  src={selectedImage.dataUrl}
-                  alt="Cargo Proof Preview"
-                  className="w-14 h-14 rounded-lg object-cover border-2 border-[#003356] shadow-xs shrink-0"
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#181c20]">Transit Fleet Classification</label>
+              <div className="h-10 px-3 rounded-xl bg-[#f1f4fa] flex items-center justify-between text-xs text-[#42474e] border border-[#e5e8ee]">
+                <span className="font-semibold text-[#003356]">{selectedVehicleInfo.vehicleType}</span>
+                <span className="text-[10px] font-mono text-[#72777f]">{selectedVehicleInfo.vehicleNumber}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Driver Photo (Required, max 45 KB) */}
+          <div className="flex flex-col gap-2.5 p-4 rounded-xl bg-[#f8fafc] border border-[#e5e8ee]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="text-xs font-bold text-[#003356] flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[17px] text-[#27638c]">photo_camera</span>
+                <span>Driver Photo <span className="text-rose-600 font-bold">*</span></span>
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#cfe4ff] text-[#001d34]">
+                  Required • Max 45 KB
+                </span>
+                <button
+                  type="button"
+                  onClick={handleGenerateSampleImage}
+                  disabled={isCompressingImage}
+                  className="text-[11px] text-[#005148] hover:text-[#003d36] font-bold flex items-center gap-1 cursor-pointer underline disabled:opacity-50"
+                  title="Generate verified driver photo <= 45 KB"
+                >
+                  <span className="material-symbols-outlined text-[14px]">auto_fix_high</span>
+                  <span>Use Sample Driver Photo</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Image Dropzone & Preview */}
+            {!selectedImage ? (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleImageDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer ${
+                  isDragging ? "border-[#003356] bg-[#eff6ff]" : "border-[#c2c7cf] hover:border-[#174a73] bg-white"
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
                 />
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-[#003356] truncate max-w-[220px]">
-                    {selectedImage.file.name || "consignment_proof.jpg"}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-0.5">
-                      <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                      <span>{selectedImage.sizeKb} KB (&le; 45 KB)</span>
+                <div className="w-10 h-10 rounded-full bg-[#e8f0fe] text-[#003356] flex items-center justify-center shadow-xs">
+                  <span className="material-symbols-outlined text-[22px]">cloud_upload</span>
+                </div>
+                <div className="text-xs text-[#181c20]">
+                  <span className="font-bold text-[#003356]">Click to upload</span> or drag and drop driver photo
+                </div>
+                <p className="text-[10px] text-[#72777f]">
+                  JPG, PNG or WEBP (automatically compressed on client to &le; 45 KB)
+                </p>
+                {isCompressingImage && (
+                  <div className="flex items-center gap-2 text-xs text-[#003356] font-semibold mt-1">
+                    <span className="w-3.5 h-3.5 border-2 border-[#003356] border-t-transparent rounded-full animate-spin" />
+                    <span>Compressing driver photo to &le; 45 KB...</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white border border-[#cfe4ff] shadow-xs">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={selectedImage.dataUrl}
+                    alt="Driver Photo Preview"
+                    className="w-14 h-14 rounded-lg object-cover border-2 border-[#003356] shadow-xs shrink-0"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-[#003356] truncate max-w-[220px]">
+                      {selectedImage.file.name || "driver_photo.jpg"}
                     </span>
-                    <span className="text-[10px] text-[#72777f]">
-                      {selectedImage.width}×{selectedImage.height}px
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                        <span>{selectedImage.sizeKb} KB (&le; 45 KB)</span>
+                      </span>
+                      <span className="text-[10px] text-[#72777f]">
+                        {selectedImage.width}×{selectedImage.height}px
+                      </span>
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-xs text-[#003356] hover:underline font-semibold px-2.5 py-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold px-2.5 py-1 rounded-lg cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-xs text-[#003356] hover:underline font-semibold px-2.5 py-1 rounded-lg hover:bg-slate-100 cursor-pointer"
-                >
-                  Replace
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRemoveImage}
-                  className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-semibold px-2.5 py-1 rounded-lg cursor-pointer"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          )}
+            )}
 
-          {imageError && (
-            <div className="flex items-center gap-1.5 text-xs text-rose-700 bg-rose-50 p-2.5 rounded-lg border border-rose-200 animate-in fade-in">
-              <span className="material-symbols-outlined text-[16px] text-rose-600">error</span>
-              <span>{imageError}</span>
-            </div>
-          )}
-        </div>
+            {imageError && (
+              <div className="flex items-center gap-1.5 text-xs text-rose-700 bg-rose-50 p-2.5 rounded-lg border border-rose-200 animate-in fade-in">
+                <span className="material-symbols-outlined text-[16px] text-rose-600">error</span>
+                <span>{imageError}</span>
+              </div>
+            )}
+          </div>
 
         {/* Section 5: Pickup and Expected Delivery Schedules */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

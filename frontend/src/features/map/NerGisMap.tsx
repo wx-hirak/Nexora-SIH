@@ -22,6 +22,10 @@ import {
   formatAxiosError
 } from "@/services/api/apiClient";
 
+// Initial map view: focused closely on Assam (Guwahati / Central Assam logistics corridor)
+const ASSAM_MAP_CENTER: [number, number] = [26.15, 91.80];
+const ASSAM_INITIAL_ZOOM = 8.5;
+
 // Helper component to automatically fit map bounds to the active route polyline
 function RouteBoundsFitter({
   routeCoordinates,
@@ -95,6 +99,7 @@ function MapResizer({ isFullscreen }: { isFullscreen: boolean }) {
   return null;
 }
 
+
 // Minimal Floating Map Controls (+ / − zoom, my location, recenter, fullscreen)
 function FloatingMapControlsInside({
   onCenterMyLocation,
@@ -135,11 +140,10 @@ function FloatingMapControlsInside({
         <button
           type="button"
           onClick={onCenterMyLocation}
-          className={`p-2.5 sm:p-3 transition-colors cursor-pointer flex items-center justify-center ${
-            isMyLocationActive
+          className={`p-2.5 sm:p-3 transition-colors cursor-pointer flex items-center justify-center ${isMyLocationActive
               ? "bg-sky-50 text-[#0284c7] font-bold"
               : "text-slate-700 hover:bg-slate-100 hover:text-[#0284c7]"
-          }`}
+            }`}
           title="Center on My Location (Live GPS)"
           aria-label="My Location"
         >
@@ -157,11 +161,10 @@ function FloatingMapControlsInside({
         <button
           type="button"
           onClick={onToggleFullscreen}
-          className={`p-2.5 sm:p-3 transition-colors cursor-pointer flex items-center justify-center ${
-            isFullscreen
+          className={`p-2.5 sm:p-3 transition-colors cursor-pointer flex items-center justify-center ${isFullscreen
               ? "bg-[#003356] text-white hover:bg-[#174a73]"
               : "text-slate-700 hover:bg-slate-100 hover:text-[#003356]"
-          }`}
+            }`}
           title={isFullscreen ? "Exit Fullscreen (Esc)" : "Expand Map Fullscreen"}
           aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
         >
@@ -180,14 +183,12 @@ const createVehicleIcon = (id: string, isBlocked?: boolean) => {
     className: "custom-leaflet-marker",
     html: `
       <div class="relative flex items-center justify-center cursor-pointer group" style="transform: translate(-50%, -50%);">
-        ${
-          isBlocked
-            ? '<span class="absolute w-8 h-8 rounded-full bg-rose-500/40 animate-ping"></span>'
-            : '<span class="absolute w-7 h-7 rounded-full bg-emerald-500/25 animate-ping"></span>'
-        }
-        <div class="flex items-center gap-1 px-2.5 py-1 rounded-full text-white text-[10px] font-bold shadow-md border-2 border-white transition-transform group-hover:scale-110 select-none ${
-          isBlocked ? "bg-[#ba1a1a]" : "bg-[#003356]"
-        }">
+        ${isBlocked
+        ? '<span class="absolute w-8 h-8 rounded-full bg-rose-500/40 animate-ping"></span>'
+        : '<span class="absolute w-7 h-7 rounded-full bg-emerald-500/25 animate-ping"></span>'
+      }
+        <div class="flex items-center gap-1 px-2.5 py-1 rounded-full text-white text-[10px] font-bold shadow-md border-2 border-white transition-transform group-hover:scale-110 select-none ${isBlocked ? "bg-[#ba1a1a]" : "bg-[#003356]"
+      }">
           <span class="material-symbols-outlined text-[13px]">local_shipping</span>
           <span class="font-mono">${id}</span>
         </div>
@@ -205,9 +206,8 @@ const createIncidentIcon = (severity: "high" | "medium" | "low", type: string) =
     className: "custom-leaflet-marker",
     html: `
       <div class="relative flex items-center justify-center cursor-pointer group" style="transform: translate(-50%, -50%);">
-        <span class="absolute w-8 h-8 rounded-full ${
-          severity === "high" ? "bg-rose-500/40 animate-ping" : "bg-amber-500/30"
-        }"></span>
+        <span class="absolute w-8 h-8 rounded-full ${severity === "high" ? "bg-rose-500/40 animate-ping" : "bg-amber-500/30"
+      }"></span>
         <div class="w-7 h-7 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white transition-transform group-hover:scale-110 select-none" style="background-color: ${bg};">
           <span class="material-symbols-outlined text-[15px]">${icon}</span>
         </div>
@@ -252,8 +252,6 @@ const createLiveUserGpsIcon = () => {
     iconAnchor: [0, 0]
   });
 };
-
-const DEFAULT_MAP_CENTER: [number, number] = [26.2006, 92.9376];
 
 export const NerGisMap: React.FC = () => {
   const roadsFromStore = useRoadStore((s) => s.roads);
@@ -327,9 +325,9 @@ export const NerGisMap: React.FC = () => {
     };
   }, [isFullscreen, toggleFullscreen]);
 
-  // Map viewport control state (Center of NER: 26.2006° N, 92.9376° E)
-  const [targetCoords, setTargetCoords] = useState<[number, number]>(DEFAULT_MAP_CENTER);
-  const [targetZoom, setTargetZoom] = useState(7);
+  // Map viewport control state (Initial focus closely around Assam: 26.15° N, 91.80° E)
+  const [targetCoords, setTargetCoords] = useState<[number, number]>(ASSAM_MAP_CENTER);
+  const [targetZoom, setTargetZoom] = useState(ASSAM_INITIAL_ZOOM);
   const [triggerCenter, setTriggerCenter] = useState(0);
 
   // Route Alternatives state (POST /routes/alternatives)
@@ -470,10 +468,10 @@ export const NerGisMap: React.FC = () => {
     );
   }, [availableRoutes, selectedRouteId]);
 
-  // Recenter map handlers
+  // Recenter map handlers (Focus back on Assam)
   const handleRecenter = useCallback(() => {
-    setTargetCoords(DEFAULT_MAP_CENTER);
-    setTargetZoom(7);
+    setTargetCoords(ASSAM_MAP_CENTER);
+    setTargetZoom(ASSAM_INITIAL_ZOOM);
     setTriggerCenter((c) => c + 1);
   }, []);
 
@@ -526,11 +524,10 @@ export const NerGisMap: React.FC = () => {
       {/* Primary Map Viewport with OpenStreetMap and Leaflet engine */}
       <div
         ref={mapWrapperRef}
-        className={`transition-all duration-300 bg-slate-100 select-none overflow-hidden ${
-          isFullscreen
+        className={`transition-all duration-300 bg-slate-100 select-none overflow-hidden ${isFullscreen
             ? "fixed inset-0 z-[9999] w-screen h-screen rounded-none border-0 shadow-2xl"
             : "relative w-full h-[500px] sm:h-[600px] lg:h-[760px] rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,51,86,0.06)]"
-        }`}
+          }`}
       >
         {/* Floating Exit Fullscreen Button in Fullscreen Mode */}
         {isFullscreen && (
@@ -555,11 +552,12 @@ export const NerGisMap: React.FC = () => {
           setSearchQuery={setSearchQuery}
         />
 
-        {/* Real Leaflet Map Container */}
+        {/* Real Leaflet Map Container centered closely around Assam */}
         <MapContainer
-          center={DEFAULT_MAP_CENTER}
-          zoom={7}
-          minZoom={6}
+          center={ASSAM_MAP_CENTER}
+          zoom={ASSAM_INITIAL_ZOOM}
+          zoomSnap={0.5}
+          minZoom={3}
           maxZoom={18}
           zoomControl={false}
           scrollWheelZoom={true}
@@ -568,6 +566,7 @@ export const NerGisMap: React.FC = () => {
           dragging={true}
           className="w-full h-full"
         >
+
           {/* OpenStreetMap Standard Tiles with proper attribution */}
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -637,13 +636,12 @@ export const NerGisMap: React.FC = () => {
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <span className="font-bold text-xs text-[#003356]">{road.id}</span>
                         <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize ${
-                            road.status === "blocked"
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize ${road.status === "blocked"
                               ? "bg-rose-100 text-rose-800"
                               : road.status === "at_risk"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-emerald-100 text-emerald-800"
-                          }`}
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-emerald-100 text-emerald-800"
+                            }`}
                         >
                           {road.status.replace("_", " ")}
                         </span>
@@ -873,11 +871,10 @@ export const NerGisMap: React.FC = () => {
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <span className="font-bold text-xs text-[#003356] font-mono">{v.id}</span>
                       <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize ${
-                          isBlocked
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize ${isBlocked
                             ? "bg-rose-100 text-rose-800"
                             : "bg-emerald-100 text-emerald-800"
-                        }`}
+                          }`}
                       >
                         {isBlocked ? "Halted (Cutoff)" : v.status}
                       </span>
@@ -907,13 +904,12 @@ export const NerGisMap: React.FC = () => {
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <span className="font-bold text-xs text-[#003356]">{inc.id}</span>
                     <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${
-                        inc.severity === "high"
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${inc.severity === "high"
                           ? "bg-rose-100 text-rose-800"
                           : inc.severity === "medium"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
                     >
                       {inc.severity} severity
                     </span>
@@ -1037,11 +1033,10 @@ export const NerGisMap: React.FC = () => {
                             key={r.id}
                             type="button"
                             onClick={() => setSelectedRouteId(r.id)}
-                            className={`px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer flex flex-col gap-0.5 ${
-                              isSelected
+                            className={`px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer flex flex-col gap-0.5 ${isSelected
                                 ? "bg-white text-[#003356] shadow-xs font-semibold ring-1 ring-slate-200/80"
                                 : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center justify-between gap-1">
                               <span className="text-[11px] font-bold truncate">{r.name}</span>

@@ -216,3 +216,108 @@ export async function generateSampleConsignmentImage(
     height: 240
   };
 }
+
+/**
+ * Generates an instant sample driver verification photograph (~12 KB),
+ * allowing users and testers to test the Create Shipment flow in 1 click without browsing files.
+ */
+export async function generateSampleDriverPhoto(
+  driverName = "T. Sangma",
+  licenseId = "DL-01-2024-8841"
+): Promise<CompressedImageResult> {
+  const canvas = document.createElement("canvas");
+  canvas.width = 360;
+  canvas.height = 360;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not initialize canvas");
+
+  // Modern driver card background
+  const grad = ctx.createLinearGradient(0, 0, 360, 360);
+  grad.addColorStop(0, "#003356");
+  grad.addColorStop(1, "#001d34");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 360, 360);
+
+  // Border
+  ctx.strokeStyle = "#4da3ff";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(10, 10, 340, 340);
+
+  // Header banner
+  ctx.fillStyle = "#cfe4ff";
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("NER LOGISTICS • CERTIFIED DRIVER ID", 180, 42);
+
+  // Driver Photo Avatar circle
+  ctx.beginPath();
+  ctx.arc(180, 120, 50, 0, Math.PI * 2);
+  ctx.fillStyle = "#174a73";
+  ctx.fill();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Avatar initials
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 30px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const initials = driverName
+    .split(" ")
+    .map((w) => w[0])
+    .filter(Boolean)
+    .join("")
+    .slice(0, 2) || "DR";
+  ctx.fillText(initials, 180, 120);
+
+  // Driver Name
+  ctx.font = "bold 18px sans-serif";
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(driverName, 180, 205);
+
+  // License ID
+  ctx.font = "bold 12px monospace";
+  ctx.fillStyle = "#9ecaff";
+  ctx.fillText(`ID: ${licenseId}`, 180, 230);
+
+  // Verified Badge Pill
+  ctx.fillStyle = "#005148";
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(60, 258, 240, 34, 17);
+  } else {
+    ctx.rect(60, 258, 240, 34);
+  }
+  ctx.fill();
+
+  ctx.fillStyle = "#6ffbbe";
+  ctx.font = "bold 12px sans-serif";
+  ctx.fillText("✓ VERIFIED DRIVER PHOTO", 180, 279);
+
+  // Timestamp
+  ctx.fillStyle = "#8ba3b8";
+  ctx.font = "10px sans-serif";
+  ctx.fillText(`Recorded: ${new Date().toLocaleDateString()} • Dispatch Ready`, 180, 322);
+
+  const blob = await canvasToBlob(canvas, "image/jpeg", 0.8);
+  const file = new File([blob], `driver_${driverName.toLowerCase().replace(/\s+/g, "_")}.jpg`, {
+    type: "image/jpeg"
+  });
+
+  const dataUrl = await new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+
+  return {
+    blob,
+    file,
+    sizeBytes: blob.size,
+    sizeKb: Math.round((blob.size / 1024) * 10) / 10,
+    dataUrl,
+    width: 360,
+    height: 360
+  };
+}
