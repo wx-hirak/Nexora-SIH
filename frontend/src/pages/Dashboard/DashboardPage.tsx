@@ -1,6 +1,6 @@
 import React from "react";
 import { NerGisMap } from "@/features/map/NerGisMap";
-import { ArterialMatrixTable } from "@/features/map/ArterialMatrixTable";
+import { ArterialMatrixTable } from "@/features/accessibility/ArterialMatrixTable";
 import { useUiStore } from "@/stores/uiStore";
 import { useDemoScenario } from "@/hooks/useDemoScenario";
 
