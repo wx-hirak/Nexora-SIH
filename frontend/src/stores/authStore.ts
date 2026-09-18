@@ -15,7 +15,7 @@ interface AuthState {
   isAuthenticated: boolean;
   hasSelectedProfile: boolean;
   user: AuthUser | null;
-  login: (email: string, role?: UserRole) => void;
+  login: (email: string, role?: UserRole, vehicleType?: "heavy" | "four-wheeler" | "two-wheeler") => void;
   selectProfile: (role: UserRole, vehicleType: "heavy" | "four-wheeler" | "two-wheeler") => void;
   logout: () => void;
 }
@@ -80,7 +80,11 @@ export const useAuthStore = create<AuthState>((set) => {
     hasSelectedProfile: initial.hasSelectedProfile,
     user: initial.user,
 
-    login: (email: string, role: UserRole = "operator") => {
+    login: (
+      email: string,
+      role: UserRole = "operator",
+      vehicleType?: "heavy" | "four-wheeler" | "two-wheeler"
+    ) => {
       const defaultVehicles: Record<UserRole, "heavy" | "four-wheeler" | "two-wheeler"> = {
         admin: "heavy",
         operator: "four-wheeler",
@@ -99,7 +103,7 @@ export const useAuthStore = create<AuthState>((set) => {
         officer: "Station / Unit ID"
       };
 
-      const vehicle = defaultVehicles[role];
+      const vehicle = vehicleType || defaultVehicles[role];
       const newUser: AuthUser = {
         email,
         name: nameMap[role],
@@ -115,7 +119,7 @@ export const useAuthStore = create<AuthState>((set) => {
 
       const nextState = {
         isAuthenticated: true,
-        hasSelectedProfile: false, // Must visit role/vehicle selection next!
+        hasSelectedProfile: true,
         user: newUser
       };
 
