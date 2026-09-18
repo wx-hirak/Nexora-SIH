@@ -578,19 +578,22 @@ export const vehicleApi = {
       const res = await apiClient.get<{ vehicles?: unknown[]; data?: unknown[] } | unknown[]>("/vehicle/list", config);
       const list = Array.isArray(res.data) ? res.data : (res.data as { vehicles?: unknown[] })?.vehicles || [];
       if (list && list.length > 0) {
-        return list.map((v: any, index: number) => {
-          const coords = v.currentLocation?.coordinates || [91.7362, 26.1445];
+        return list.map((rawItem: unknown, index: number) => {
+          const v = (rawItem || {}) as Record<string, unknown>;
+          const location = v.currentLocation as { coordinates?: [number, number] } | undefined;
+          const coords = location?.coordinates || [91.7362, 26.1445];
+          const capacity = typeof v.capacityKg === "number" ? v.capacityKg : 0;
           return {
-            id: v.registrationNumber || v._id || `VEH-${index + 1}`,
-            name: `${v.model || "Freight Unit"} (${v.registrationNumber || "NER-TRUCK"})`,
+            id: (v.registrationNumber as string) || (v._id as string) || `VEH-${index + 1}`,
+            name: `${(v.model as string) || "Freight Unit"} (${(v.registrationNumber as string) || "NER-TRUCK"})`,
             cargoType: "medical",
-            vehicleType: v.capacityKg && v.capacityKg > 10000 ? "heavy" : "four-wheeler",
+            vehicleType: capacity > 10000 ? "heavy" : "four-wheeler",
             lat: coords[1],
             lng: coords[0],
             speedKph: v.status === "AVAILABLE" ? 0 : 54,
             headingDeg: 60,
             status: v.status === "AVAILABLE" ? "idle" : "moving",
-            lastUpdated: v.updatedAt || new Date().toISOString()
+            lastUpdated: (v.updatedAt as string) || new Date().toISOString()
           } as Vehicle;
         });
       }

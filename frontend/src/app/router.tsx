@@ -1,13 +1,14 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { AppShell } from "./layout/AppShell";
+import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute, PublicOnlyRoute, RoleSelectionRoute } from "./router/RouteGuards";
-import { CommandCenterPage } from "@/pages/CommandCenterPage";
-import { FleetPage } from "@/pages/FleetPage";
-import { DeliveriesPage } from "@/pages/DeliveriesPage";
-import { IncidentsAlertsPage } from "@/pages/IncidentsAlertsPage";
-import { AnalyticsPage } from "@/pages/AnalyticsPage";
-import { FieldReportingPage } from "@/pages/FieldReportingPage";
-import { LoginPage } from "@/pages/LoginPage";
+import { DashboardPage } from "@/pages/Dashboard/DashboardPage";
+import { FleetPage } from "@/pages/Fleet/FleetPage";
+import { DeliveriesPage } from "@/pages/Fleet/DeliveriesPage";
+import { IncidentsAlertsPage } from "@/pages/IncidentsAlerts/IncidentsAlertsPage";
+import { AnalyticsPage } from "@/pages/Analytics/AnalyticsPage";
+import { FieldReportingPage } from "@/pages/IncidentsAlerts/FieldReportingPage";
+import { LoginPage } from "@/pages/Login/LoginPage";
+import { SettingsPage } from "@/pages/Settings/SettingsPage";
 import { RoleVehicleSelectionPage } from "@/pages/RoleVehicleSelectionPage";
 
 export const router = createBrowserRouter([
@@ -37,15 +38,15 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <CommandCenterPage />
+        element: <DashboardPage />
       },
       {
         path: "dashboard",
-        element: <CommandCenterPage />
+        element: <DashboardPage />
       },
       {
         path: "command-center",
-        element: <CommandCenterPage />
+        element: <DashboardPage />
       },
       {
         path: "fleet",
@@ -85,7 +86,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "settings",
-        element: <Navigate to="/role-selection" replace />
+        element: <SettingsPage />
       },
       {
         path: "*",

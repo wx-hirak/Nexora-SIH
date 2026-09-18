@@ -19,7 +19,6 @@ import { DashboardMapControlPanel } from "./DashboardMapControlPanel";
 import {
   routeAlternativesApi,
   type ParsedAlternativeRoute,
-  DEFAULT_ROUTE_COORDINATES,
   formatAxiosError
 } from "@/services/api/apiClient";
 
@@ -346,14 +345,14 @@ export const NerGisMap: React.FC = () => {
       return activeShipment.originCoordinates;
     }
     return [91.7362, 26.1445]; // Default: Guwahati [lng, lat]
-  }, [activeShipment?.originCoordinates]);
+  }, [activeShipment]);
 
   const activeDestinationCoordinates: [number, number] = useMemo(() => {
     if (activeShipment?.destinationCoordinates && activeShipment.destinationCoordinates.length === 2) {
       return activeShipment.destinationCoordinates;
     }
     return [91.8933, 25.5788]; // Default: Shillong [lng, lat]
-  }, [activeShipment?.destinationCoordinates]);
+  }, [activeShipment]);
 
   // Manual refresh / retry handler for user interaction
   const fetchRouteAlternatives = useCallback(async () => {
@@ -384,7 +383,6 @@ export const NerGisMap: React.FC = () => {
   // Dynamically load calculated route for active shipment via backend OpenRouteService
   useEffect(() => {
     let isCancelled = false;
-    setIsLoadingRoutes(true);
 
     // 1. Check if shipmentStore already has a cached route geometry for this shipment
     const cachedStoreRoute = storeRoutes.find(
@@ -406,13 +404,25 @@ export const NerGisMap: React.FC = () => {
         summary: `${cachedStoreRoute.distanceKm} km corridor connecting ${activeShipment?.origin || "origin"} and ${activeShipment?.destination || "destination"}`,
         via: cachedStoreRoute.via || `${activeShipment?.origin || "origin"} ➔ ${activeShipment?.destination || "destination"}`
       };
-      setAvailableRoutes([parsed]);
-      setSelectedRouteId(parsed.id);
-      setIsLoadingRoutes(false);
-      return;
+      const cacheTimeoutId = setTimeout(() => {
+        if (!isCancelled) {
+          setAvailableRoutes([parsed]);
+          setSelectedRouteId(parsed.id);
+        }
+      }, 0);
+      return () => {
+        isCancelled = true;
+        clearTimeout(cacheTimeoutId);
+      };
     }
 
     // 2. Query backend OpenRouteService alternatives endpoint with GeoJSON [lng, lat]
+    const timeoutId = setTimeout(() => {
+      if (!isCancelled) {
+        setIsLoadingRoutes(true);
+      }
+    }, 0);
+
     routeAlternativesApi
       .fetchParsedAlternatives({
         origin: { type: "Point", coordinates: activeOriginCoordinates },
@@ -438,9 +448,10 @@ export const NerGisMap: React.FC = () => {
 
     return () => {
       isCancelled = true;
+      clearTimeout(timeoutId);
     };
   }, [
-    activeShipment?.id,
+    activeShipment,
     activeOriginCoordinates,
     activeDestinationCoordinates,
     storeRoutes
