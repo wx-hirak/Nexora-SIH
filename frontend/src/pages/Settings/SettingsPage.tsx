@@ -1,12 +1,23 @@
 import React, { useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
+import { useUiStore } from "@/stores/uiStore";
+import type { UserRole } from "@/types/domain";
 import { DataSourceBadge } from "@/components/common/DataSourceBadge";
 import { BackendConnectionModal } from "@/components/common/BackendConnectionModal";
 
 export const SettingsPage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
+  const selectProfile = useAuthStore((s) => s.selectProfile);
+  const activeRole = useUiStore((s) => s.activeRole);
+  const selectedVehicleType = useUiStore((s) => s.selectedVehicleType);
+
   const [isBackendModalOpen, setIsBackendModalOpen] = useState(false);
-  const currentRole = user?.role || "state_logistics_director";
+
+  // Role and Vehicle profile state
+  const [selectedRole, setSelectedRole] = useState<UserRole>(user?.role || activeRole || "operator");
+  const [selectedVehicle, setSelectedVehicle] = useState<"heavy" | "four-wheeler" | "two-wheeler">(
+    user?.vehicleType || selectedVehicleType || "four-wheeler"
+  );
 
   // Local interactive preferences
   const [offlineSyncEnabled, setOfflineSyncEnabled] = useState(true);
@@ -18,8 +29,63 @@ export const SettingsPage: React.FC = () => {
   const [telemetryInterval, setTelemetryInterval] = useState("10");
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  const roles = [
+    {
+      id: "operator" as UserRole,
+      title: "Control Desk Operator",
+      badge: "Active Dispatch",
+      icon: "headset_mic",
+      description: "Manage live corridor telemetry, reroute freight convoys, and handle dispatch operations."
+    },
+    {
+      id: "admin" as UserRole,
+      title: "Regional Authority",
+      badge: "HQ Command",
+      icon: "admin_panel_settings",
+      description: "High-level oversight across 8 North East states, corridor clearance orders, and SLA governance."
+    },
+    {
+      id: "officer" as UserRole,
+      title: "Field Transit Officer",
+      badge: "Transit Post",
+      icon: "shield_person",
+      description: "On-the-ground checkpoint operations, photo hazard telemetry verification, and incident logging."
+    }
+  ];
+
+  const vehicles = [
+    {
+      id: "two-wheeler" as const,
+      name: "Two Wheeler",
+      badge: "Agile Transit",
+      icon: "two_wheeler",
+      color: "bg-[#27638c]",
+      description: "Specialized for narrow rural hill tracks, steep gradient slope corridors, and express emergency parcel dispatches.",
+      specs: "Payload: < 60kg • Max Slope: 28°"
+    },
+    {
+      id: "four-wheeler" as const,
+      name: "Four Wheeler (Utility / 4x4)",
+      badge: "Standard Fleet",
+      icon: "directions_car",
+      color: "bg-[#005148]",
+      description: "Utility pickups, emergency 4x4 response vehicles, and multi-district transit across regional arteries.",
+      specs: "Payload: < 2.5 Tons • All-Weather 4WD"
+    },
+    {
+      id: "heavy" as const,
+      name: "Heavy Commercial Freight",
+      badge: "Cargo / Convoy",
+      icon: "local_shipping",
+      color: "bg-[#003356]",
+      description: "Multi-axle container trucks, refrigerated pharmaceutical carriers, and essential supply convoys on NH corridors.",
+      specs: "Payload: 15-40 Tons • NH Arterials"
+    }
+  ];
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    selectProfile(selectedRole, selectedVehicle);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
@@ -65,27 +131,129 @@ export const SettingsPage: React.FC = () => {
       <form onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 cols: Main settings */}
         <div className="lg:col-span-2 flex flex-col gap-6">
-          {/* User Profile & Role Info */}
-          <div className="bg-white p-6 rounded-xl border border-[#e5e8ee] shadow-xs flex flex-col gap-4">
-            <h2 className="text-base font-bold text-[#181c20] flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#003356] text-[20px]">badge</span>
-              <span>Operator Profile & Command Role</span>
-            </h2>
+          {/* User Profile, Operational Role & Vehicle Configuration */}
+          <div className="bg-white p-6 rounded-xl border border-[#e5e8ee] shadow-xs flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-[#181c20] flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#003356] text-[20px]">badge</span>
+                <span>Operational Role & Vehicle Configuration</span>
+              </h2>
+              <span className="text-[11px] text-[#72777f]">
+                Active Profile: <strong className="text-[#003356] capitalize">{selectedRole}</strong> • <strong className="text-[#003356] capitalize">{selectedVehicle.replace("-", " ")}</strong>
+              </span>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-semibold uppercase text-[#72777f]">Active User</span>
-                <span className="text-sm font-bold text-[#181c20]">{user?.name || "Dr. M. Saikia (Senior Dispatcher)"}</span>
-                <span className="text-xs text-[#72777f]">{user?.email || "dispatcher@ner-logistics.gov.in"}</span>
+            {/* Active User Metadata */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 rounded-lg bg-[#f7f9ff] border border-[#e5e8ee]/80 text-xs">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] font-bold uppercase text-[#72777f] tracking-wider">Logged In Personnel</span>
+                <span className="font-bold text-[#181c20]">{user?.name || "Dr. M. Saikia (Senior Dispatcher)"}</span>
+                <span className="text-[#72777f] text-[11px]">{user?.email || "dispatcher@ner-logistics.gov.in"}</span>
               </div>
-
-              <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-semibold uppercase text-[#72777f]">Assigned Role</span>
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#003356] capitalize">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  {currentRole.replace("_", " ")}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] font-bold uppercase text-[#72777f] tracking-wider">Clearance ID & Agency</span>
+                <span className="font-semibold text-[#181c20]">{user?.idType || "Govt / Agency ID"}: NER-HQ-8491</span>
+                <span className="text-emerald-700 font-medium text-[11px] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  Authorized Dispatch & Incident Control
                 </span>
-                <span className="text-[11px] text-[#72777f]">Full Dispatch & Incident Control Clearance</span>
+              </div>
+            </div>
+
+            {/* 1. Operational Command Role Selection */}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#003356] uppercase tracking-wider">
+                  Operational Command Role
+                </span>
+                <span className="text-[11px] text-[#72777f]">Select assigned clearance</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {roles.map((r) => {
+                  const active = selectedRole === r.id;
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setSelectedRole(r.id)}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                        active
+                          ? "bg-[#cfe4ff]/25 border-[#174a73] shadow-xs ring-2 ring-[#003356]/20"
+                          : "bg-white border-[#e5e8ee] hover:bg-[#f1f4fa] hover:border-[#c2c7cf]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between w-full">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            active ? "bg-[#003356] text-white" : "bg-[#f1f4fa] text-[#42474e]"
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">{r.icon}</span>
+                        </div>
+                        <span
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                            active ? "bg-[#174a73] text-white" : "bg-[#ebeef4] text-[#42474e]"
+                          }`}
+                        >
+                          {r.badge}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-[#181c20] leading-tight">{r.title}</div>
+                        <p className="text-[10px] text-[#72777f] mt-1 leading-snug">{r.description}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Vehicle Profile Configuration */}
+            <div className="flex flex-col gap-2.5 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#003356] uppercase tracking-wider">
+                  Assigned Vehicle Profile
+                </span>
+                <span className="text-[11px] text-[#72777f]">Route clearance & gradient specs</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {vehicles.map((v) => {
+                  const active = selectedVehicle === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setSelectedVehicle(v.id)}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                        active
+                          ? "bg-[#cfe4ff]/25 border-[#174a73] shadow-xs ring-2 ring-[#003356]/20"
+                          : "bg-white border-[#e5e8ee] hover:bg-[#f1f4fa] hover:border-[#c2c7cf]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between w-full">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${v.color}`}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">{v.icon}</span>
+                        </div>
+                        <span
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                            active ? "bg-[#174a73] text-white" : "bg-[#ebeef4] text-[#42474e]"
+                          }`}
+                        >
+                          {v.badge}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-[#181c20] leading-tight">{v.name}</div>
+                        <p className="text-[10px] text-[#72777f] mt-1 leading-snug">{v.description}</p>
+                      </div>
+                      <div className="text-[9px] font-mono text-[#42474e] pt-1.5 border-t border-slate-100/80 truncate">
+                        {v.specs}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -221,6 +389,14 @@ export const SettingsPage: React.FC = () => {
               <div className="flex justify-between py-1.5 border-b border-slate-100">
                 <span className="text-[#72777f]">Active Corridors</span>
                 <span className="font-semibold text-[#181c20]">8 North-Eastern States</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-[#72777f]">Active Role</span>
+                <span className="font-semibold text-[#003356] capitalize">{selectedRole}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <span className="text-[#72777f]">Vehicle Profile</span>
+                <span className="font-semibold text-[#003356] capitalize">{selectedVehicle.replace("-", " ")}</span>
               </div>
             </div>
 
