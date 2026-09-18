@@ -2,59 +2,34 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
-  Polyline,
   Marker,
   Popup,
-  Tooltip,
   useMap
 } from "react-leaflet";
-import L from "leaflet";
 import { useRoadStore } from "@/stores/roadStore";
 import { useVehicleStore } from "@/stores/vehicleStore";
 import { useIncidentStore } from "@/stores/incidentStore";
 import { useUiStore } from "@/stores/uiStore";
 import { useShipmentStore } from "@/stores/shipmentStore";
 import { initialRoads, initialVehicles, initialIncidents } from "@/services/mock/seedData";
-import { DashboardMapControlPanel } from "./DashboardMapControlPanel";
+import { DashboardMapControlPanel } from "@/features/dashboard/DashboardMapControlPanel";
 import {
   routeAlternativesApi,
   type ParsedAlternativeRoute,
   formatAxiosError
 } from "@/services/api/apiClient";
 
+import { createLiveUserGpsIcon } from "./mapMarkerIcons";
+import { MapFloatingControls } from "./MapFloatingControls";
+import { CorridorLayers } from "./CorridorLayers";
+import { VehicleMapMarkers } from "./VehicleMapMarkers";
+import { IncidentMapMarkers } from "./IncidentMapMarkers";
+import { RoutePolylineLayer } from "./RoutePolylineLayer";
+import { RouteAlternativesCard } from "./RouteAlternativesCard";
+
 // Initial map view: focused closely on Assam (Guwahati / Central Assam logistics corridor)
 const ASSAM_MAP_CENTER: [number, number] = [26.15, 91.80];
 const ASSAM_INITIAL_ZOOM = 8.5;
-
-// Helper component to automatically fit map bounds to the active route polyline
-function RouteBoundsFitter({
-  routeCoordinates,
-  activeRouteId
-}: {
-  routeCoordinates: [number, number][];
-  activeRouteId?: string;
-}) {
-  const map = useMap();
-  const prevIdRef = React.useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (routeCoordinates && routeCoordinates.length > 0 && prevIdRef.current !== activeRouteId) {
-      prevIdRef.current = activeRouteId;
-      const latLngs = routeCoordinates.map(([lat, lng]) => L.latLng(lat, lng));
-      const bounds = L.latLngBounds(latLngs);
-      if (bounds.isValid()) {
-        map.fitBounds(bounds, {
-          padding: [50, 50],
-          maxZoom: 13,
-          animate: true,
-          duration: 0.8
-        });
-      }
-    }
-  }, [routeCoordinates, activeRouteId, map]);
-
-  return null;
-}
 
 // Helper component to control map panning and zooming from inside MapContainer
 function MapController({
@@ -98,160 +73,6 @@ function MapResizer({ isFullscreen }: { isFullscreen: boolean }) {
 
   return null;
 }
-
-
-// Minimal Floating Map Controls (+ / − zoom, my location, recenter, fullscreen)
-function FloatingMapControlsInside({
-  onCenterMyLocation,
-  onRecenter,
-  isMyLocationActive,
-  onToggleFullscreen,
-  isFullscreen
-}: {
-  onCenterMyLocation: () => void;
-  onRecenter: () => void;
-  isMyLocationActive: boolean;
-  onToggleFullscreen: () => void;
-  isFullscreen: boolean;
-}) {
-  const map = useMap();
-
-  return (
-    <div className="absolute bottom-4 right-4 z-[1000] flex flex-col items-end gap-2 pointer-events-auto">
-      <div className="map-floating-element flex flex-col bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_4px_16px_rgba(0,51,86,0.12)] border border-slate-200/80 overflow-hidden divide-y divide-slate-100">
-        <button
-          type="button"
-          onClick={() => map.zoomIn()}
-          className="p-2.5 sm:p-3 text-slate-700 hover:bg-slate-100 hover:text-[#003356] transition-colors cursor-pointer flex items-center justify-center"
-          title="Zoom In (+)"
-          aria-label="Zoom In"
-        >
-          <span className="material-symbols-outlined text-[20px]">add</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => map.zoomOut()}
-          className="p-2.5 sm:p-3 text-slate-700 hover:bg-slate-100 hover:text-[#003356] transition-colors cursor-pointer flex items-center justify-center"
-          title="Zoom Out (−)"
-          aria-label="Zoom Out"
-        >
-          <span className="material-symbols-outlined text-[20px]">remove</span>
-        </button>
-        <button
-          type="button"
-          onClick={onCenterMyLocation}
-          className={`p-2.5 sm:p-3 transition-colors cursor-pointer flex items-center justify-center ${isMyLocationActive
-              ? "bg-sky-50 text-[#0284c7] font-bold"
-              : "text-slate-700 hover:bg-slate-100 hover:text-[#0284c7]"
-            }`}
-          title="Center on My Location (Live GPS)"
-          aria-label="My Location"
-        >
-          <span className="material-symbols-outlined text-[20px]">my_location</span>
-        </button>
-        <button
-          type="button"
-          onClick={onRecenter}
-          className="p-2.5 sm:p-3 text-slate-700 hover:bg-slate-100 hover:text-[#003356] transition-colors cursor-pointer flex items-center justify-center"
-          title="Recenter North East Region"
-          aria-label="Recenter Map"
-        >
-          <span className="material-symbols-outlined text-[20px]">filter_center_focus</span>
-        </button>
-        <button
-          type="button"
-          onClick={onToggleFullscreen}
-          className={`p-2.5 sm:p-3 transition-colors cursor-pointer flex items-center justify-center ${isFullscreen
-              ? "bg-[#003356] text-white hover:bg-[#174a73]"
-              : "text-slate-700 hover:bg-slate-100 hover:text-[#003356]"
-            }`}
-          title={isFullscreen ? "Exit Fullscreen (Esc)" : "Expand Map Fullscreen"}
-          aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-        >
-          <span className="material-symbols-outlined text-[20px]">
-            {isFullscreen ? "fullscreen_exit" : "fullscreen"}
-          </span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Marker Icon Generators using Leaflet DivIcon
-const createVehicleIcon = (id: string, isBlocked?: boolean) => {
-  return L.divIcon({
-    className: "custom-leaflet-marker",
-    html: `
-      <div class="relative flex items-center justify-center cursor-pointer group" style="transform: translate(-50%, -50%);">
-        ${isBlocked
-        ? '<span class="absolute w-8 h-8 rounded-full bg-rose-500/40 animate-ping"></span>'
-        : '<span class="absolute w-7 h-7 rounded-full bg-emerald-500/25 animate-ping"></span>'
-      }
-        <div class="flex items-center gap-1 px-2.5 py-1 rounded-full text-white text-[10px] font-bold shadow-md border-2 border-white transition-transform group-hover:scale-110 select-none ${isBlocked ? "bg-[#ba1a1a]" : "bg-[#003356]"
-      }">
-          <span class="material-symbols-outlined text-[13px]">local_shipping</span>
-          <span class="font-mono">${id}</span>
-        </div>
-      </div>
-    `,
-    iconSize: [0, 0],
-    iconAnchor: [0, 0]
-  });
-};
-
-const createIncidentIcon = (severity: "high" | "medium" | "low", type: string) => {
-  const bg = severity === "high" ? "#dc2626" : severity === "medium" ? "#d97706" : "#2563eb";
-  const icon = type === "landslide" ? "landslide" : type === "flood" ? "water_damage" : "warning";
-  return L.divIcon({
-    className: "custom-leaflet-marker",
-    html: `
-      <div class="relative flex items-center justify-center cursor-pointer group" style="transform: translate(-50%, -50%);">
-        <span class="absolute w-8 h-8 rounded-full ${severity === "high" ? "bg-rose-500/40 animate-ping" : "bg-amber-500/30"
-      }"></span>
-        <div class="w-7 h-7 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white transition-transform group-hover:scale-110 select-none" style="background-color: ${bg};">
-          <span class="material-symbols-outlined text-[15px]">${icon}</span>
-        </div>
-      </div>
-    `,
-    iconSize: [0, 0],
-    iconAnchor: [0, 0]
-  });
-};
-
-const createEndpointIcon = (label: string, isOrigin: boolean) => {
-  const bg = isOrigin ? "#15803d" : "#003356";
-  const icon = isOrigin ? "warehouse" : "local_hospital";
-  return L.divIcon({
-    className: "custom-leaflet-marker",
-    html: `
-      <div class="relative flex items-center justify-center cursor-pointer group" style="transform: translate(-50%, -50%);">
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-white text-[10px] font-bold shadow-lg border-2 border-white transition-transform group-hover:scale-105 select-none" style="background-color: ${bg};">
-          <span class="material-symbols-outlined text-[14px]">${icon}</span>
-          <span>${label}</span>
-        </div>
-      </div>
-    `,
-    iconSize: [0, 0],
-    iconAnchor: [0, 0]
-  });
-};
-
-const createLiveUserGpsIcon = () => {
-  return L.divIcon({
-    className: "custom-leaflet-marker",
-    html: `
-      <div class="relative flex items-center justify-center cursor-pointer group" style="transform: translate(-50%, -50%);">
-        <span class="absolute w-8 h-8 rounded-full bg-sky-400/40 animate-ping"></span>
-        <div class="w-4 h-4 rounded-full bg-[#0284c7] border-2 border-white shadow-md"></div>
-        <div class="absolute top-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full bg-[#0284c7] text-white text-[9px] font-bold shadow-sm">
-          ● You (Live)
-        </div>
-      </div>
-    `,
-    iconSize: [0, 0],
-    iconAnchor: [0, 0]
-  });
-};
 
 export const NerGisMap: React.FC = () => {
   const roadsFromStore = useRoadStore((s) => s.roads);
@@ -335,7 +156,6 @@ export const NerGisMap: React.FC = () => {
   const [selectedRouteId, setSelectedRouteId] = useState<string>("");
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(true);
   const [routeError, setRouteError] = useState<string | null>(null);
-  const [isRouteCardCollapsed, setIsRouteCardCollapsed] = useState(false);
 
   // Derive origin and destination coordinates for the active shipment
   const activeOriginCoordinates: [number, number] = useMemo(() => {
@@ -524,10 +344,11 @@ export const NerGisMap: React.FC = () => {
       {/* Primary Map Viewport with OpenStreetMap and Leaflet engine */}
       <div
         ref={mapWrapperRef}
-        className={`transition-all duration-300 bg-slate-100 select-none overflow-hidden ${isFullscreen
+        className={`transition-all duration-300 bg-slate-100 select-none overflow-hidden ${
+          isFullscreen
             ? "fixed inset-0 z-[9999] w-screen h-screen rounded-none border-0 shadow-2xl"
             : "relative w-full h-[500px] sm:h-[600px] lg:h-[760px] rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,51,86,0.06)]"
-          }`}
+        }`}
       >
         {/* Floating Exit Fullscreen Button in Fullscreen Mode */}
         {isFullscreen && (
@@ -566,7 +387,6 @@ export const NerGisMap: React.FC = () => {
           dragging={true}
           className="w-full h-full"
         >
-
           {/* OpenStreetMap Standard Tiles with proper attribution */}
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -585,7 +405,7 @@ export const NerGisMap: React.FC = () => {
           />
 
           {/* Minimal Floating Map Controls (+ / − zoom, location, recenter, fullscreen) */}
-          <FloatingMapControlsInside
+          <MapFloatingControls
             onCenterMyLocation={handleCenterMyLocation}
             onRecenter={handleRecenter}
             isMyLocationActive={!!userGpsLocation?.isLive}
@@ -593,340 +413,35 @@ export const NerGisMap: React.FC = () => {
             isFullscreen={isFullscreen}
           />
 
-          {/* ================= 1. NER ARTERIAL CORRIDORS (POLYLINES) ================= */}
-          {roads.map((road) => {
-            if (!isCorridorVisible(road.status, road.id)) return null;
-            const style = getRoadStyle(road.status);
+          {/* 1. NER Arterial Corridors (Road Polylines) */}
+          <CorridorLayers
+            roads={roads}
+            isCorridorVisible={isCorridorVisible}
+            getRoadStyle={getRoadStyle}
+          />
 
-            return (
-              <React.Fragment key={road.id}>
-                {/* Road Casing (White Halo for visual clarity) */}
-                <Polyline
-                  positions={road.geometry}
-                  pathOptions={{
-                    color: "#ffffff",
-                    weight: style.weight + 4,
-                    lineCap: "round",
-                    lineJoin: "round",
-                    opacity: 0.9
-                  }}
-                />
-                {/* Primary Road Line */}
-                <Polyline
-                  positions={road.geometry}
-                  pathOptions={{
-                    ...style,
-                    lineCap: "round",
-                    lineJoin: "round"
-                  }}
-                >
-                  <Tooltip sticky>
-                    <div className="font-sans text-xs">
-                      <strong className="font-bold text-[#003356]">{road.name}</strong>
-                      <div className="text-[11px] text-slate-600">
-                        Status: <span className="font-bold capitalize">{road.status.replace("_", " ")}</span>
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        Speed: {road.speedKph} km/h • Clearance: {road.clearancePercent}
-                      </div>
-                    </div>
-                  </Tooltip>
-                  <Popup>
-                    <div className="p-3 font-sans min-w-[220px]">
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="font-bold text-xs text-[#003356]">{road.id}</span>
-                        <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize ${road.status === "blocked"
-                              ? "bg-rose-100 text-rose-800"
-                              : road.status === "at_risk"
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-emerald-100 text-emerald-800"
-                            }`}
-                        >
-                          {road.status.replace("_", " ")}
-                        </span>
-                      </div>
-                      <p className="text-xs font-semibold text-slate-800">{road.name}</p>
-                      <p className="text-[11px] text-slate-600 mt-1">{road.description}</p>
-                      <div className="mt-2 pt-2 border-t border-slate-100 grid grid-cols-2 gap-1 text-[10px] text-slate-500">
-                        <div>Clearance: <strong className="text-slate-700">{road.clearancePercent}</strong></div>
-                        <div>Speed: <strong className="text-slate-700">{road.speedKph} km/h</strong></div>
-                      </div>
-                    </div>
-                  </Popup>
-                </Polyline>
-              </React.Fragment>
-            );
-          })}
+          {/* 2. Active Selected Route & Alternatives Layer */}
+          <RoutePolylineLayer
+            activeRoute={activeRoute}
+            availableRoutes={availableRoutes}
+            selectedRouteId={selectedRouteId}
+            onSelectRouteId={setSelectedRouteId}
+            activeShipment={activeShipment}
+            activeOriginCoordinates={activeOriginCoordinates}
+            activeDestinationCoordinates={activeDestinationCoordinates}
+          />
 
-          {/* ================= 2. ACTIVE SELECTED ROUTE & ALTERNATIVES (FROM BACKEND API) ================= */}
-          {/* Automatic Bounds Fitter for complete route visibility */}
-          {activeRoute && activeRoute.coordinates.length > 0 && (
-            <RouteBoundsFitter
-              routeCoordinates={activeRoute.coordinates}
-              activeRouteId={activeRoute.id}
-            />
-          )}
+          {/* 3. Vehicle Markers */}
+          <VehicleMapMarkers
+            vehicles={vehicles}
+            isVehicleVisible={isVehicleVisible}
+            isNh6Blocked={isNh6Blocked}
+          />
 
-          {/* Active Route Polyline */}
-          {activeRoute && activeRoute.coordinates.length > 0 && (
-            <>
-              {/* Casing / Halo for active route */}
-              <Polyline
-                positions={activeRoute.coordinates}
-                pathOptions={{
-                  color: "#ffffff",
-                  weight: 9,
-                  opacity: 0.95,
-                  lineCap: "round",
-                  lineJoin: "round"
-                }}
-              />
-              {/* Active Route Colored Line */}
-              <Polyline
-                positions={activeRoute.coordinates}
-                pathOptions={{
-                  color: "#005148",
-                  weight: 6,
-                  opacity: 0.95,
-                  lineCap: "round",
-                  lineJoin: "round"
-                }}
-              >
-                <Tooltip sticky>
-                  <div className="font-sans text-xs">
-                    <strong className="font-bold text-[#003356]">{activeRoute.name}</strong>
-                    <div className="text-[11px] text-slate-600">
-                      Distance: {activeRoute.distanceKm} km • Duration: {activeRoute.etaFormatted}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {activeRoute.coordinates.length} waypoints (GeoJSON converted to Leaflet)
-                    </div>
-                  </div>
-                </Tooltip>
-                <Popup>
-                  <div className="p-3 font-sans min-w-[220px]">
-                    <span className="text-xs font-bold text-[#003356]">{activeRoute.name}</span>
-                    <p className="text-[11px] text-slate-600 mt-1">{activeRoute.summary}</p>
-                    <div className="mt-2 pt-2 border-t border-slate-100 grid grid-cols-2 gap-1 text-[11px]">
-                      <div>Distance: <strong>{activeRoute.distanceKm} km</strong></div>
-                      <div>Duration: <strong>{activeRoute.etaFormatted}</strong></div>
-                    </div>
-                  </div>
-                </Popup>
-              </Polyline>
-            </>
-          )}
+          {/* 4. Incident Markers */}
+          <IncidentMapMarkers incidents={incidents} />
 
-          {/* Inactive Alternative Route Polylines (Dashed lines, click to select) */}
-          {availableRoutes.map((r) => {
-            if (r.id === selectedRouteId || r.coordinates.length === 0) return null;
-            return (
-              <Polyline
-                key={`alt-${r.id}`}
-                positions={r.coordinates}
-                eventHandlers={{
-                  click: () => setSelectedRouteId(r.id)
-                }}
-                pathOptions={{
-                  color: "#64748b",
-                  weight: 4,
-                  dashArray: "8, 6",
-                  opacity: 0.75,
-                  lineCap: "round"
-                }}
-              >
-                <Tooltip sticky>
-                  <div className="font-sans text-xs">
-                    <strong className="font-semibold text-slate-700">{r.name} (Click to select)</strong>
-                    <div className="text-[10px] text-slate-500">
-                      {r.distanceKm} km • {r.etaFormatted}
-                    </div>
-                  </div>
-                </Tooltip>
-              </Polyline>
-            );
-          })}
-
-          {/* Dynamic Origin Marker */}
-          <Marker
-            position={
-              activeRoute && activeRoute.coordinates.length > 0
-                ? activeRoute.coordinates[0]
-                : [activeOriginCoordinates[1], activeOriginCoordinates[0]]
-            }
-            icon={createEndpointIcon(`Origin: ${activeShipment?.origin || "Guwahati"}`, true)}
-          >
-            <Popup>
-              <div className="p-2.5 font-sans min-w-[220px]">
-                <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs mb-1">
-                  <span className="material-symbols-outlined text-[16px]">warehouse</span>
-                  <span>Origin: {activeShipment?.origin || "Guwahati Central Depot"}</span>
-                </div>
-                <p className="text-[11px] text-slate-600">
-                  Consignment departure node at [{activeOriginCoordinates[0].toFixed(4)}, {activeOriginCoordinates[1].toFixed(4)}].
-                </p>
-                {activeShipment && (
-                  <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-col gap-0.5 text-[10px] text-slate-500">
-                    <div>Consignment: <strong className="font-mono text-slate-700">{activeShipment.id}</strong></div>
-                    <div>Driver: <strong className="text-slate-700">{activeShipment.driverName || "Official Driver"}</strong></div>
-                  </div>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-
-          {/* Dynamic Destination Marker */}
-          <Marker
-            position={
-              activeRoute && activeRoute.coordinates.length > 0
-                ? activeRoute.coordinates[activeRoute.coordinates.length - 1]
-                : [activeDestinationCoordinates[1], activeDestinationCoordinates[0]]
-            }
-            icon={createEndpointIcon(`Destination: ${activeShipment?.destination || "Shillong"}`, false)}
-          >
-            <Popup>
-              <div className="p-2.5 font-sans min-w-[220px]">
-                <div className="flex items-center gap-1.5 text-[#003356] font-bold text-xs mb-1">
-                  <span className="material-symbols-outlined text-[16px]">pin_drop</span>
-                  <span>Destination: {activeShipment?.destination || "Shillong Terminal"}</span>
-                </div>
-                <p className="text-[11px] text-slate-600">
-                  Consignment terminal at [{activeDestinationCoordinates[0].toFixed(4)}, {activeDestinationCoordinates[1].toFixed(4)}].
-                </p>
-                {activeRoute && (
-                  <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600 font-semibold">
-                    <span>Distance: {activeRoute.distanceKm} km</span>
-                    <span>ETA: {activeRoute.etaFormatted}</span>
-                  </div>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-
-          {/* Assigned Driver / Vehicle on Route Marker */}
-          {activeShipment && activeShipment.driverName && (
-            <Marker
-              position={
-                activeRoute && activeRoute.coordinates.length > 2
-                  ? activeRoute.coordinates[Math.floor(activeRoute.coordinates.length * 0.25)]
-                  : [activeOriginCoordinates[1], activeOriginCoordinates[0]]
-              }
-              icon={createVehicleIcon(activeShipment.vehicleNumber || activeShipment.vehicleId || "FW-18", false)}
-            >
-              <Popup>
-                <div className="p-3 font-sans min-w-[230px]">
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="font-bold text-xs text-[#003356] font-mono">
-                      {activeShipment.vehicleNumber || activeShipment.vehicleId}
-                    </span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase">
-                      Assigned Driver
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2.5 my-2">
-                    {activeShipment.driverPhotoUrl ? (
-                      <img
-                        src={activeShipment.driverPhotoUrl}
-                        alt={activeShipment.driverName}
-                        className="w-10 h-10 rounded-full object-cover border-2 border-[#003356]"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[#003356] text-white flex items-center justify-center font-bold text-xs">
-                        {activeShipment.driverName[0]}
-                      </div>
-                    )}
-                    <div>
-                      <div className="text-xs font-bold text-slate-800">{activeShipment.driverName}</div>
-                      <div className="text-[11px] text-[#174a73] font-semibold">{activeShipment.driverPhone || "+91 94361 78921"}</div>
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t border-slate-100 flex flex-col gap-1 text-[11px] text-slate-600">
-                    <div>Consignment: <strong className="text-slate-800">{activeShipment.id}</strong></div>
-                    <div>Corridor: <strong>{activeShipment.origin} ➔ {activeShipment.destination}</strong></div>
-                    {activeRoute && (
-                      <div className="text-emerald-700 font-semibold">
-                        Distance: {activeRoute.distanceKm} km • ETA: {activeRoute.etaFormatted}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          )}
-
-          {/* ================= 3. VEHICLE MARKERS ================= */}
-          {vehicles.map((v) => {
-            if (!isVehicleVisible(v.id, v.name)) return null;
-            const isBlocked = isNh6Blocked && v.id === "FW-18";
-
-            return (
-              <Marker
-                key={v.id}
-                position={[v.lat, v.lng]}
-                icon={createVehicleIcon(v.id, isBlocked)}
-              >
-                <Popup>
-                  <div className="p-3 font-sans min-w-[220px]">
-                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="font-bold text-xs text-[#003356] font-mono">{v.id}</span>
-                      <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full capitalize ${isBlocked
-                            ? "bg-rose-100 text-rose-800"
-                            : "bg-emerald-100 text-emerald-800"
-                          }`}
-                      >
-                        {isBlocked ? "Halted (Cutoff)" : v.status}
-                      </span>
-                    </div>
-                    <p className="text-xs font-semibold text-slate-800">{v.name}</p>
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-1 text-[11px] text-slate-600">
-                      <div>Operator: <strong className="text-slate-800">{v.driverName || "Official Driver"}</strong></div>
-                      <div>Speed: <strong className="text-slate-800">{v.speedKph} km/h</strong></div>
-                      <div>Corridor: <span className="text-slate-700 font-medium">{v.currentCorridor || "Assam Arterial"}</span></div>
-                      <div>Cargo: <span className="text-slate-700 capitalize">{v.cargoType} payload</span></div>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
-
-          {/* ================= 4. INCIDENT MARKERS ================= */}
-          {incidents.map((inc) => (
-            <Marker
-              key={inc.id}
-              position={[inc.lat, inc.lng]}
-              icon={createIncidentIcon(inc.severity, inc.type)}
-            >
-              <Popup>
-                <div className="p-3 font-sans min-w-[240px] max-w-xs">
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="font-bold text-xs text-[#003356]">{inc.id}</span>
-                    <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${inc.severity === "high"
-                          ? "bg-rose-100 text-rose-800"
-                          : inc.severity === "medium"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                    >
-                      {inc.severity} severity
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-900 leading-snug">{inc.title}</h4>
-                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{inc.description}</p>
-                  <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-0.5 text-[10px] text-slate-500">
-                    <div>Agency: <strong className="text-slate-700">{inc.agency}</strong></div>
-                    <div>Corridor: <strong className="text-slate-700">{inc.corridorName}</strong></div>
-                    {inc.impact && <div className="text-rose-700 font-medium">{inc.impact}</div>}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-
-          {/* ================= 5. LIVE USER GPS MARKER ================= */}
+          {/* 5. Live User GPS Marker */}
           {userGpsLocation && (
             <Marker
               position={[userGpsLocation.lat, userGpsLocation.lng]}
@@ -972,121 +487,20 @@ export const NerGisMap: React.FC = () => {
           </div>
         )}
 
-        {/* ================= 6. FLOATING ROUTE SELECTION & ALTERNATIVES OVERLAY CARD ================= */}
+        {/* 6. Floating Route Selection & Alternatives Overlay Card */}
         {activeRoute && (
-          <div className="absolute bottom-3 sm:bottom-4 left-3 sm:left-4 z-[1000] pointer-events-auto max-w-sm sm:max-w-md w-[calc(100%-1.5rem)] sm:w-auto">
-            <div className="map-floating-element bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_4px_20px_rgba(0,51,86,0.12)] border border-slate-200/80 overflow-hidden select-none transition-all duration-200">
-              {/* Header Bar with Minimize/Expand Toggle & Refresh Button */}
-              <div className="px-3.5 py-2.5 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="p-1 rounded-lg bg-[#005148]/10 text-[#005148] flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[16px]">alt_route</span>
-                  </span>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-[#003356] truncate">
-                      Guwahati ➔ Itanagar Corridor
-                    </span>
-                    <span className="text-[10px] text-slate-500 truncate flex items-center gap-1">
-                      <span>Dynamic Route Engine</span>
-                      <span>•</span>
-                      <span className="font-mono text-emerald-700 font-semibold">{activeRoute.coordinates.length} waypoints</span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={fetchRouteAlternatives}
-                    disabled={isLoadingRoutes}
-                    className="p-1 text-slate-400 hover:text-[#003356] hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                    title="Refresh route alternatives from API"
-                  >
-                    <span className={`material-symbols-outlined text-[17px] ${isLoadingRoutes ? "animate-spin" : ""}`}>
-                      refresh
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsRouteCardCollapsed(!isRouteCardCollapsed)}
-                    className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
-                    title={isRouteCardCollapsed ? "Expand route panel" : "Collapse route panel"}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {isRouteCardCollapsed ? "expand_less" : "expand_more"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Body */}
-              {!isRouteCardCollapsed && (
-                <div className="p-3 flex flex-col gap-2.5">
-                  {/* Route Selection Tabs / Alternatives (Requirement 6) */}
-                  {availableRoutes.length > 1 ? (
-                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100/90 rounded-xl">
-                      {availableRoutes.map((r) => {
-                        const isSelected = r.id === selectedRouteId;
-                        return (
-                          <button
-                            key={r.id}
-                            type="button"
-                            onClick={() => setSelectedRouteId(r.id)}
-                            className={`px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer flex flex-col gap-0.5 ${isSelected
-                                ? "bg-white text-[#003356] shadow-xs font-semibold ring-1 ring-slate-200/80"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
-                              }`}
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-[11px] font-bold truncate">{r.name}</span>
-                              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#005148] shrink-0" />}
-                            </div>
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              {r.distanceKm} km • {r.etaFormatted}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="p-2 bg-emerald-50/80 border border-emerald-200/70 rounded-xl flex items-center justify-between text-xs">
-                      <span className="font-semibold text-emerald-900">{activeRoute.name}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
-                        Active Route
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Active Route Specs Ribbon */}
-                  <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-700">
-                      <span className="material-symbols-outlined text-[16px] text-slate-400">straighten</span>
-                      <span>Distance: <strong className="font-semibold text-slate-900">{activeRoute.distanceKm} km</strong></span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-700">
-                      <span className="material-symbols-outlined text-[16px] text-slate-400">schedule</span>
-                      <span>Duration: <strong className="font-semibold text-slate-900">{activeRoute.etaFormatted}</strong></span>
-                    </div>
-                  </div>
-
-                  {/* Route Origin & Destination Geocodes (Requirement 15 ready) */}
-                  <div className="text-[11px] text-slate-600 flex flex-col gap-1 px-1 pt-1 border-t border-slate-100">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
-                      <span className="font-semibold text-slate-800">Origin:</span>
-                      <span className="text-slate-600 truncate">Guwahati [91.7362, 26.1445]</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#003356] shrink-0" />
-                      <span className="font-semibold text-slate-800">Destination:</span>
-                      <span className="text-slate-600 truncate">Itanagar [93.6167, 27.0844]</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <RouteAlternativesCard
+            activeRoute={activeRoute}
+            availableRoutes={availableRoutes}
+            selectedRouteId={selectedRouteId}
+            onSelectRouteId={setSelectedRouteId}
+            isLoadingRoutes={isLoadingRoutes}
+            onRefreshRoutes={fetchRouteAlternatives}
+            activeOriginCoordinates={activeOriginCoordinates}
+            activeDestinationCoordinates={activeDestinationCoordinates}
+            originName={activeShipment?.origin || "Guwahati"}
+            destinationName={activeShipment?.destination || "Itanagar"}
+          />
         )}
       </div>
     </div>
