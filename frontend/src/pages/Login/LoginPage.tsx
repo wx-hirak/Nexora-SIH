@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Logo } from "@/components/Logo";
+import { Logo } from "@/components/common/Logo";
 import { useAuthStore } from "@/stores/authStore";
 import { authApi, formatAxiosError } from "@/services/api/apiClient";
 import { getApiConfig, pingBackend } from "@/services/apiConfig";
@@ -17,6 +17,7 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState("GuwahatiHub2025!");
   const [fullName, setFullName] = useState("Kamrup Dispatch Operator");
   const [phone, setPhone] = useState("9876543210");
+  const [selectedVehicle, setSelectedVehicle] = useState<"heavy" | "four-wheeler" | "two-wheeler">("four-wheeler");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -72,13 +73,20 @@ export const LoginPage: React.FC = () => {
     setSelectedRole(role);
     setUsername(rolePresets[role].email);
     setFullName(rolePresets[role].name);
+    if (role === "officer") {
+      setSelectedVehicle("two-wheeler");
+    } else if (role === "operator") {
+      setSelectedVehicle("four-wheeler");
+    } else if (role === "admin") {
+      setSelectedVehicle("heavy");
+    }
     setAuthError(null);
   };
 
   // Direct bypass for Demo/Offline evaluation
   const handleDemoBypass = () => {
-    login(username, selectedRole);
-    navigate("/role-selection");
+    login(username, selectedRole, selectedVehicle);
+    navigate("/");
   };
 
   // Sign In Handler: Actively hits /auth/signin on backend via Axios with seamless offline fallback
@@ -97,10 +105,10 @@ export const LoginPage: React.FC = () => {
       setAuthSuccess("Authentication successful! Redirecting...");
 
       // Update local auth store with role & profile
-      login(username, selectedRole);
+      login(username, selectedRole, selectedVehicle);
 
       setTimeout(() => {
-        navigate("/role-selection");
+        navigate("/");
       }, 500);
     } catch (err: unknown) {
       console.warn("[Auth] Backend sign-in hit failed:", err);
@@ -110,9 +118,9 @@ export const LoginPage: React.FC = () => {
         // Backend is disconnected for now - seamlessly authenticate with local demo session
         console.info("[Auth] Backend disconnected. Continuing with local demo session.");
         setAuthSuccess("Backend offline. Continuing in local demo session...");
-        login(username, selectedRole);
+        login(username, selectedRole, selectedVehicle);
         setTimeout(() => {
-          navigate("/role-selection");
+          navigate("/");
         }, 500);
         return;
       }
@@ -137,13 +145,16 @@ export const LoginPage: React.FC = () => {
     setAuthError(null);
     setAuthSuccess(null);
 
+    const isVehicleRequired = selectedRole === "operator" || selectedRole === "officer";
+
     try {
       await authApi.signup({
         name: fullName,
         email: username,
         password: password,
         role: selectedRole,
-        phone: phone
+        phone: phone,
+        vehicleType: isVehicleRequired ? selectedVehicle : undefined
       });
 
       setAuthSuccess("Account registered successfully! You can now Sign In.");
@@ -406,6 +417,56 @@ export const LoginPage: React.FC = () => {
                   className="w-full h-11 pl-9 pr-3 rounded-lg bg-[#f1f4fa] text-xs text-[#181c20] border border-[#e5e8ee] focus:border-[#174a73] focus:bg-white focus:outline-none transition-colors"
                 />
               </div>
+            </div>
+          )}
+
+          {/* Vehicle Selection for Signup (where the selected role requires/uses a vehicle) */}
+          {activeTab === "signup" && (selectedRole === "operator" || selectedRole === "officer") && (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-[#181c20]">
+                  Assigned Vehicle Profile
+                </label>
+                <span className="text-[10px] text-[#72777f]">
+                  {selectedVehicle === "heavy"
+                    ? "Freight / Convoy"
+                    : selectedVehicle === "four-wheeler"
+                    ? "Utility / 4x4"
+                    : "Agile Transit"}
+                </span>
+              </div>
+              <div className="relative flex items-center">
+                <span className="material-symbols-outlined absolute left-3 text-[#72777f] text-[18px] pointer-events-none">
+                  {selectedVehicle === "heavy"
+                    ? "local_shipping"
+                    : selectedVehicle === "four-wheeler"
+                    ? "directions_car"
+                    : "two_wheeler"}
+                </span>
+                <select
+                  value={selectedVehicle}
+                  onChange={(e) =>
+                    setSelectedVehicle(
+                      e.target.value as "heavy" | "four-wheeler" | "two-wheeler"
+                    )
+                  }
+                  className="w-full h-11 pl-9 pr-8 rounded-lg bg-[#f1f4fa] text-xs text-[#181c20] font-medium border border-[#e5e8ee] focus:border-[#174a73] focus:bg-white focus:outline-none transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="four-wheeler">Four Wheeler (Utility / 4x4 Pickup)</option>
+                  <option value="heavy">Heavy Commercial Freight (Multi-Axle / Cargo)</option>
+                  <option value="two-wheeler">Two Wheeler (Agile Transit / Hill Tracks)</option>
+                </select>
+                <span className="material-symbols-outlined absolute right-3 text-[#72777f] text-[18px] pointer-events-none">
+                  expand_more
+                </span>
+              </div>
+              <span className="text-[10px] text-[#72777f]">
+                {selectedVehicle === "heavy"
+                  ? "Configured for major NH corridors and heavy freight payloads."
+                  : selectedVehicle === "four-wheeler"
+                  ? "All-weather 4WD capability across multi-district regional arteries."
+                  : "Optimized for steep gradient slopes and narrow hill bypasses."}
+              </span>
             </div>
           )}
 
