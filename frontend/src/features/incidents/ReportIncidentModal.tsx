@@ -4,7 +4,7 @@ import { useDataProvider } from "@/app/providers/DataProviderContext";
 import { useRoadStore } from "@/stores/roadStore";
 import { useIncidentStore } from "@/stores/incidentStore";
 import { useLiveLocation } from "@/hooks/useLiveLocation";
-import { LiveCameraCapture } from "@/components/LiveCameraCapture";
+import { LiveCameraCapture } from "./LiveCameraCapture";
 import type { Severity, Incident } from "@/types/domain";
 
 export const ReportIncidentModal: React.FC = () => {
