@@ -31,7 +31,7 @@ export interface PingResult {
  * - Strips trailing slashes
  */
 export function normalizeHttpUrl(rawUrl: string): string {
-  if (!rawUrl) return "http://localhost:8000";
+  if (!rawUrl) return "http://localhost:3001";
 
   let cleaned = rawUrl.trim().replace(/^["']|["']$/g, "");
 
@@ -53,19 +53,19 @@ export function normalizeHttpUrl(rawUrl: string): string {
 
 /**
  * Derives a WebSocket URL from an HTTP/S base URL or explicit WS URL:
- * e.g. "http://10.215.235.233:5000" -> "ws://10.215.235.233:5000/ws"
+ * e.g. "http://localhost:3001" -> "ws://localhost:3001/ws"
  * e.g. "https://api.example.com" -> "wss://api.example.com/ws"
  */
 export function deriveWsUrl(httpBaseUrl: string, explicitWsUrl?: string): string {
   const customWs = explicitWsUrl?.trim().replace(/^["']|["']$/g, "");
   // If explicit WS URL is provided and not defaulting to localhost while HTTP is pointing elsewhere
-  if (customWs && (!customWs.includes("localhost:8000") || httpBaseUrl.includes("localhost:8000"))) {
+  if (customWs && (!customWs.includes("localhost:3001") || httpBaseUrl.includes("localhost:3001"))) {
     return customWs;
   }
 
   const isSecure = httpBaseUrl.startsWith("https://");
   const hostAndPort = httpBaseUrl.replace(/^https?:\/\//i, "");
-  return `${isSecure ? "wss://" : "ws://"}${hostAndPort}/ws`;
+  return `${isSecure ? "wss://" : "ws://"}${hostAndPort}`;
 }
 
 /**
@@ -78,10 +78,10 @@ export function getApiConfig(): ApiConnectionConfig {
   const rawEnvBackendUrl =
     import.meta.env.VITE_API_BACKEND_URL ||
     import.meta.env.VITE_API_BASE_URL ||
-    "http://localhost:8000";
+    "http://localhost:3001";
 
   const rawEnvWsUrl = import.meta.env.VITE_WS_URL;
-  const rawEnvSourceType = (import.meta.env.VITE_DATA_SOURCE || "mock") as "mock" | "live";
+  const rawEnvSourceType = (import.meta.env.VITE_DATA_SOURCE || "live") as "mock" | "live";
 
   const httpUrl = normalizeHttpUrl(storedUrl || rawEnvBackendUrl);
   const wsUrl = deriveWsUrl(httpUrl, rawEnvWsUrl);
@@ -127,8 +127,8 @@ export async function pingBackend(
   const baseUrl = customBaseUrl ? normalizeHttpUrl(customBaseUrl) : getApiConfig().httpUrl;
   const startTime = performance.now();
 
-  // Try health or root or snapshot endpoints
-  const testEndpoints = ["/api/snapshot", "/api/health", "/api/vehicles", ""];
+  // Test root and diagnostic endpoints supported by backend
+  const testEndpoints = ["", "/auth/test", "/api/v1/auth/test", "/api/snapshot"];
 
   for (const ep of testEndpoints) {
     try {
