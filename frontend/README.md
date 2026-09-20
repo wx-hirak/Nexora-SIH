@@ -120,10 +120,55 @@ npm run dev
 # Server will start on http://localhost:3001
 ```
 
-### Step 2: Run Frontend
+### Step 2: Run Frontend (Development)
 ```bash
 cd "d:/Programming files vscode/SIH APP/frontend"
 npm install
 npm run dev
 # Frontend will be accessible at http://localhost:3000
 ```
+
+---
+
+## 7. Production Build & Deployment Guide
+
+### A. Environment Configuration for Production
+In production, set the environment variable pointing to your deployed backend:
+```env
+VITE_API_URL=https://bath-sevok-server-nlbg.onrender.com
+VITE_WS_URL=wss://bath-sevok-server-nlbg.onrender.com
+VITE_DATA_SOURCE=live
+```
+
+### B. Building for Production
+```bash
+cd frontend
+npm run build
+```
+This produces an optimized production build in the `dist/` directory with:
+- **Route-based Code Splitting**: Each page is asynchronously loaded on demand.
+- **Vendor Chunking**: Dependencies are split into cached bundles (`vendor-react`, `vendor-leaflet`, `vendor-query`).
+- **Clean Assets**: Minified CSS, HTML, SVG, and zero warnings.
+
+### C. Previewing Production Locally
+```bash
+npm run preview
+# Serves the actual production bundle on http://localhost:4173
+```
+
+### D. Deploying to Hosting Platforms
+
+1. **Vercel**:
+   - Framework Preset: `Vite`
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Config: Already included via [`vercel.json`](file:///d:/Programming%20files%20vscode/SIH%20APP/frontend/vercel.json) for client-side SPA routing.
+
+2. **Netlify / Cloudflare Pages / Render Static**:
+   - Build Command: `npm run build`
+   - Publish Directory: `dist`
+   - Config: Client-side routing rewrite is automatically handled by [`public/_redirects`](file:///d:/Programming%20files%20vscode/SIH%20APP/frontend/public/_redirects).
+
+3. **Backend CORS Requirement**:
+   - Ensure the Express backend (`Bath-Sevok/backend`) environment variable `CLIENT_ORIGIN` is configured with your production frontend domain (e.g. `CLIENT_ORIGIN=https://your-frontend.vercel.app`), allowing credentialed requests (`credentials: true`).
+

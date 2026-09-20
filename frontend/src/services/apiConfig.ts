@@ -76,9 +76,10 @@ export function getApiConfig(): ApiConnectionConfig {
   const storedSourceType = localStorage.getItem(STORAGE_KEY_SOURCE_TYPE) as "mock" | "live" | null;
 
   const rawEnvBackendUrl =
+    import.meta.env.VITE_API_URL ||
     import.meta.env.VITE_API_BACKEND_URL ||
     import.meta.env.VITE_API_BASE_URL ||
-    "http://localhost:3001";
+    "https://bath-sevok-server-nlbg.onrender.com";
 
   const rawEnvWsUrl = import.meta.env.VITE_WS_URL;
   const rawEnvSourceType = (import.meta.env.VITE_DATA_SOURCE || "live") as "mock" | "live";
@@ -128,7 +129,7 @@ export async function pingBackend(
   const startTime = performance.now();
 
   // Test root and diagnostic endpoints supported by backend
-  const testEndpoints = ["", "/auth/test", "/api/v1/auth/test", "/api/snapshot"];
+  const testEndpoints = ["", "/auth/test", "/api/v1/auth/test"];
 
   for (const ep of testEndpoints) {
     try {
