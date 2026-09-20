@@ -165,8 +165,8 @@ export const routeAlternativesApi = {
     config?: AxiosRequestConfig
   ): Promise<RouteAlternativesApiResponse> {
     return postAdaptive<RouteAlternativesApiResponse>(
-      "/api/v1/routes/alternatives",
       "/routes/alternatives",
+      "/api/v1/routes/alternatives",
       body,
       config
     );

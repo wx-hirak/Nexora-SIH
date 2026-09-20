@@ -22,7 +22,14 @@ apiClient.interceptors.request.use(
     // When running in the browser on the Vite dev server (port 3000),
     // route requests through the local dev server proxy to avoid CORS preflight issues
     if (!config.baseURL) {
-      if (typeof window !== "undefined" && (window.location.port === "3000" || window.location.hostname === "localhost")) {
+      const isLocalDev =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.port === "3000" ||
+          window.location.port === "4173");
+
+      if (isLocalDev) {
         config.baseURL = "";
       } else {
         config.baseURL = getApiConfig().httpUrl;

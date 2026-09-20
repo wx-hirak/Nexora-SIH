@@ -13,40 +13,29 @@ export default defineConfig(({ mode }) => {
     env.VITE_API_URL ||
     env.VITE_API_BACKEND_URL ||
     env.VITE_API_BASE_URL ||
-    'http://localhost:3001'
+    'https://bath-sevok-server-nlbg.onrender.com'
   const backendTarget = rawTarget.replace(/\/+$/, '')
 
+  const proxyConfig = {
+    target: backendTarget,
+    changeOrigin: true,
+    secure: false,
+  }
+
   const apiProxy = {
-    '/auth': {
-      target: backendTarget,
-      changeOrigin: true,
-      secure: false,
-    },
-    '/shipments': {
-      target: backendTarget,
-      changeOrigin: true,
-      secure: false,
-    },
-    '/vehicles': {
-      target: backendTarget,
-      changeOrigin: true,
-      secure: false,
-    },
-    '/routes': {
-      target: backendTarget,
-      changeOrigin: true,
-      secure: false,
-    },
-    '/incidents': {
-      target: backendTarget,
-      changeOrigin: true,
-      secure: false,
-    },
-    '/api': {
-      target: backendTarget,
-      changeOrigin: true,
-      secure: false,
-    }
+    '/auth': proxyConfig,
+    '/vehicles': proxyConfig,
+    '/incidents': proxyConfig,
+    '/shipments': proxyConfig,
+    '/roads': proxyConfig,
+    '/routes': proxyConfig,
+    '/telemetry': proxyConfig,
+    '/alerts': proxyConfig,
+    '/weather': proxyConfig,
+    '/kpis': proxyConfig,
+    '/snapshot': proxyConfig,
+    '/demo': proxyConfig,
+    '/api': proxyConfig,
   }
 
   return {

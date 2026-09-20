@@ -31,7 +31,7 @@ export interface PingResult {
  * - Strips trailing slashes
  */
 export function normalizeHttpUrl(rawUrl: string): string {
-  if (!rawUrl) return "http://localhost:3001";
+  if (!rawUrl) return "https://bath-sevok-server-nlbg.onrender.com";
 
   let cleaned = rawUrl.trim().replace(/^["']|["']$/g, "");
 
@@ -84,7 +84,17 @@ export function getApiConfig(): ApiConnectionConfig {
   const rawEnvWsUrl = import.meta.env.VITE_WS_URL;
   const rawEnvSourceType = (import.meta.env.VITE_DATA_SOURCE || "live") as "mock" | "live";
 
-  const httpUrl = normalizeHttpUrl(storedUrl || rawEnvBackendUrl);
+  // Prevent stale localhost in localStorage from overriding remote production endpoint
+  let effectiveUrl = rawEnvBackendUrl;
+  if (storedUrl) {
+    const isStoredLocal = storedUrl.includes("localhost") || storedUrl.includes("127.0.0.1");
+    const isEnvRemote = !rawEnvBackendUrl.includes("localhost") && !rawEnvBackendUrl.includes("127.0.0.1");
+    if (!(isStoredLocal && isEnvRemote)) {
+      effectiveUrl = storedUrl;
+    }
+  }
+
+  const httpUrl = normalizeHttpUrl(effectiveUrl);
   const wsUrl = deriveWsUrl(httpUrl, rawEnvWsUrl);
   const sourceType = storedSourceType || rawEnvSourceType;
 
